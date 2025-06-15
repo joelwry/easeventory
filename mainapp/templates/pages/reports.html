@@ -1,0 +1,421 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}Reports & Analytics - EasyBook{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="page-title">Reports & Analytics</h1>
+            <p class="page-subtitle">View sales reports, receipts, and inventory analytics</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="exportReport('sales')">
+                <i class="fas fa-download me-2"></i>Export Sales
+            </button>
+            <button class="btn btn-outline-primary" onclick="exportReport('inventory')">
+                <i class="fas fa-download me-2"></i>Export Inventory
+            </button>
+        </div>
+    </div>
+
+    <!-- Analytics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Sales</h6>
+                            <h2 class="mb-0" id="totalSales">₦0.00</h2>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-chart-line fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Orders</h6>
+                            <h2 class="mb-0" id="totalOrders">0</h2>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-shopping-cart fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Avg. Order Value</h6>
+                            <h2 class="mb-0" id="avgOrderValue">₦0.00</h2>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-calculator fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Top Product</h6>
+                            <h2 class="mb-0" id="topProduct">-</h2>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-star fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Sales Trend
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="salesChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Sales by Category
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipts Section -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-receipt me-2"></i>Sales Receipts
+                </h5>
+                <div class="d-flex gap-2">
+                    <input type="text" class="form-control" id="receiptSearch" placeholder="Search receipts...">
+                    <select class="form-select" id="receiptFilter" style="width: auto;">
+                        <option value="all">All Receipts</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Receipt ID</th>
+                            <th>Date & Time</th>
+                            <th>Customer</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Payment Method</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="receiptsTable">
+                        <!-- Sample receipt data -->
+                        <tr>
+                            <td><code>RCP001</code></td>
+                            <td>2024-03-15 14:30</td>
+                            <td>John Doe</td>
+                            <td>3 items</td>
+                            <td>₦25,500.00</td>
+                            <td><span class="badge bg-success">Card</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="viewReceipt('RCP001')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="printReceipt('RCP001')">
+                                    <i class="fas fa-print"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination justify-content-end mb-0">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1">Previous</a>
+                    </li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-receipt me-2"></i>Sales Receipt
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="receipt" id="receiptContent">
+                    <!-- Receipt content will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="printReceipt()">
+                    <i class="fas fa-print me-2"></i>Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize charts when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeCharts();
+        loadReceipts();
+        updateAnalytics();
+    });
+
+    function initializeCharts() {
+        // Sales Trend Chart
+        const salesCtx = document.getElementById('salesChart').getContext('2d');
+        new Chart(salesCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Sales',
+                    data: [12000, 19000, 15000, 25000, 22000, 30000],
+                    borderColor: '#2563eb',
+                    tension: 0.4,
+                    fill: true,
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₦' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Category Distribution Chart
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+        new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Electronics', 'Clothing', 'Books', 'Others'],
+                datasets: [{
+                    data: [40, 25, 20, 15],
+                    backgroundColor: [
+                        '#2563eb',
+                        '#10b981',
+                        '#f59e0b',
+                        '#64748b'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    function updateAnalytics() {
+        // Update analytics cards with sample data
+        document.getElementById('totalSales').textContent = '₦123,500.00';
+        document.getElementById('totalOrders').textContent = '45';
+        document.getElementById('avgOrderValue').textContent = '₦2,744.44';
+        document.getElementById('topProduct').textContent = 'Wireless Headphones';
+    }
+
+    function loadReceipts() {
+        // This would typically load receipts from the server
+        // For now, we're using sample data
+    }
+
+    function viewReceipt(receiptId) {
+        // Sample receipt data
+        const receipt = {
+            id: receiptId,
+            date: '2024-03-15 14:30',
+            customer: 'John Doe',
+            items: [
+                { name: 'Wireless Headphones', quantity: 1, price: 15000 },
+                { name: 'Cotton T-Shirt', quantity: 2, price: 3500 }
+            ],
+            subtotal: 22000,
+            tax: 1650,
+            total: 23650,
+            paymentMethod: 'Card'
+        };
+
+        const receiptContent = document.getElementById('receiptContent');
+        receiptContent.innerHTML = `
+            <div class="receipt-container" style="max-width: 300px; margin: 0 auto; font-family: monospace;">
+                <div class="text-center mb-3">
+                    <h4 class="mb-1">EasyBook Store</h4>
+                    <p class="mb-1">123 Business Street</p>
+                    <p class="mb-1">Lagos, Nigeria</p>
+                    <p class="mb-1">Tel: +234 9032924589</p>
+                </div>
+                <div class="border-top border-bottom py-2 mb-2">
+                    <div class="d-flex justify-content-between">
+                        <span>Receipt #: ${receipt.id}</span>
+                        <span>${receipt.date}</span>
+                    </div>
+                    <div>Customer: ${receipt.customer}</div>
+                </div>
+                <div class="mb-2">
+                    ${receipt.items.map(item => `
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>${item.name} x${item.quantity}</span>
+                            <span>₦${(item.price * item.quantity).toLocaleString()}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="border-top pt-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Subtotal:</span>
+                        <span>₦${receipt.subtotal.toLocaleString()}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Tax (7.5%):</span>
+                        <span>₦${receipt.tax.toLocaleString()}</span>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>Total:</span>
+                        <span>₦${receipt.total.toLocaleString()}</span>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <p class="mb-1">Payment Method: ${receipt.paymentMethod}</p>
+                    <p class="mb-1">Thank you for your purchase!</p>
+                    <small>Please keep this receipt for your records</small>
+                </div>
+            </div>
+        `;
+
+        // Show modal with animation
+        const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
+        modal.show();
+    }
+
+    function printReceipt(receiptId) {
+        const receiptContent = document.getElementById('receiptContent').innerHTML;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Receipt ${receiptId}</title>
+                    <style>
+                        body { font-family: monospace; }
+                        @media print {
+                            body { margin: 0; padding: 20px; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${receiptContent}
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    }
+
+    function exportReport(type) {
+        // This would typically generate and download a report file
+        showToast(`Exporting ${type} report...`, 'info');
+    }
+
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-bg-${type} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+
+        const container = document.getElementById('toastContainer') || createToastContainer();
+        container.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    }
+
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        document.body.appendChild(container);
+        return container;
+    }
+</script>
+{% endblock %}

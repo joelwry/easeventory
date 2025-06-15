@@ -1,0 +1,271 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}Subscription - EasyBook{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="page-title">Subscription Management</h1>
+            <p class="page-subtitle">Manage your EasyBook subscription plan</p>
+        </div>
+    </div>
+
+    <!-- Current Plan Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-lg bg-primary rounded me-3 d-flex align-items-center justify-content-center">
+                            <i class="fas fa-crown text-white fa-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-1">Premium Plan</h4>
+                            <p class="text-muted mb-0">Your current subscription plan</p>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-calendar-check text-primary me-2"></i>
+                                <div>
+                                    <small class="text-muted d-block">Start Date</small>
+                                    <strong>March 1, 2024</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-calendar-times text-primary me-2"></i>
+                                <div>
+                                    <small class="text-muted d-block">Expiry Date</small>
+                                    <strong>March 1, 2025</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                    <div class="mb-3">
+                        <span class="badge bg-success">Active</span>
+                        <span class="badge bg-primary ms-2">Premium</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="renewSubscription()">
+                        <i class="fas fa-sync-alt me-2"></i>Renew Subscription
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plan Features -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-check me-2"></i>Plan Features
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="feature-item">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <h6 class="mb-0">Unlimited Products</h6>
+                                </div>
+                                <p class="text-muted mb-0">Add and manage unlimited products in your inventory</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-item">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <h6 class="mb-0">Advanced Analytics</h6>
+                                </div>
+                                <p class="text-muted mb-0">Access detailed sales and inventory reports</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-item">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <h6 class="mb-0">Priority Support</h6>
+                                </div>
+                                <p class="text-muted mb-0">Get priority access to customer support</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-item">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <h6 class="mb-0">Multiple Users</h6>
+                                </div>
+                                <p class="text-muted mb-0">Add up to 5 team members to your account</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-item">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <h6 class="mb-0">Data Export</h6>
+                                </div>
+                                <p class="text-muted mb-0">Export your data in various formats</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="feature-item">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    <h6 class="mb-0">Cloud Backup</h6>
+                                </div>
+                                <p class="text-muted mb-0">Automatic daily backup of your data</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Billing History -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-history me-2"></i>Billing History
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Invoice #</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>INV-2024-001</code></td>
+                            <td>March 1, 2024</td>
+                            <td>₦50,000.00</td>
+                            <td><span class="badge bg-success">Paid</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="downloadInvoice('INV-2024-001')">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>INV-2023-012</code></td>
+                            <td>March 1, 2023</td>
+                            <td>₦50,000.00</td>
+                            <td><span class="badge bg-success">Paid</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="downloadInvoice('INV-2023-012')">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Renewal Modal -->
+<div class="modal fade" id="renewalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-sync-alt me-2"></i>Renew Subscription
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Your current subscription will be renewed for another year.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Select Payment Method</label>
+                    <select class="form-select" id="paymentMethod">
+                        <option value="card">Credit/Debit Card</option>
+                        <option value="transfer">Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Amount to Pay</label>
+                    <div class="input-group">
+                        <span class="input-group-text">₦</span>
+                        <input type="text" class="form-control" value="50,000.00" readonly>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="processRenewal()">
+                    <i class="fas fa-lock me-2"></i>Proceed to Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function renewSubscription() {
+        new bootstrap.Modal(document.getElementById('renewalModal')).show();
+    }
+
+    function processRenewal() {
+        // This would typically handle the payment process
+        showToast('Processing payment...', 'info');
+        setTimeout(() => {
+            showToast('Payment successful! Your subscription has been renewed.', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('renewalModal')).hide();
+        }, 2000);
+    }
+
+    function downloadInvoice(invoiceId) {
+        // This would typically generate and download the invoice
+        showToast(`Downloading invoice ${invoiceId}...`, 'info');
+    }
+
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-bg-${type} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+
+        const container = document.getElementById('toastContainer') || createToastContainer();
+        container.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    }
+
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        document.body.appendChild(container);
+        return container;
+    }
+</script>
+{% endblock %}

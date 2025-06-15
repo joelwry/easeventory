@@ -1,0 +1,383 @@
+import json
+from django.shortcuts import get_object_or_404, redirect,render
+
+from inventoryApi.serializers import CategorySerializer
+from .models import InventoryItem, Category,  Customer, BusinessOwner, SignupToken, Sale, SaleItem
+#from .forms import InventoryItemForm, CategoryForm, SaleForm
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse, Http404
+from django.views.decorators.http import require_POST
+from django.db.models import Sum, Count, F
+from django.utils import timezone
+from datetime import timedelta
+
+
+# views for just only serving login and signup page 
+def login(request):
+    """View for handling login"""
+    return render(request, 'login.html', {
+        'page_title': 'Login',
+        'page_subtitle': 'Access your business account'
+    })
+
+def signup(request, token):
+    """View for handling signup with token validation"""
+    # Validate token
+    email = SignupToken.validate_token(token)
+    if not email:
+        raise Http404("Invalid or expired signup token")
+    
+    # If token is valid, render signup page
+    return render(request, 'signup.html', {
+        'page_title': 'Create Your Account',
+        'page_subtitle': 'Set up your business account',
+        'email': email,  # Pass email to template for verification
+        'token': token   # Pass token to template for API calls
+    })
+
+# ✅ Inventory view with staff-only delete
+@login_required
+def payment_success(request):
+    request.user.has_paid = True
+    request.user.save()
+    return redirect('inventory_dashboard')
+
+def payment_required(request):
+    return render(request, 'payment_required.html')
+
+@login_required(login_url="/login")
+def inventory_view(request):
+    """View for the inventory management page"""
+    business_owner = request.user
+    
+    # Get top 20 inventory items with category info
+    inventory_items = InventoryItem.objects.filter(
+        business_owner=business_owner
+    ).select_related('category').order_by('-created_at')[:20]
+    
+    # Get all categories for the business owner
+    categories = Category.objects.filter(business_owner=business_owner)
+    
+    # Calculate stats
+    total_items = InventoryItem.objects.filter(business_owner=business_owner).count()
+    total_value = InventoryItem.objects.filter(business_owner=business_owner).aggregate(
+        total=Sum(F('price') * F('quantity'))
+    )['total'] or 0
+    low_stock_count = InventoryItem.objects.filter(
+        business_owner=business_owner,
+        quantity__lte=F('min_stock')
+    ).count()
+    categories_count = categories.count()
+    
+    # Prepare initial data for the template
+    initial_data = {
+        'inventory_items': [
+            {
+                'id': item.id,
+                'name': item.name,
+                'sku': item.sku,
+                'category': item.category.name if item.category else 'Uncategorized',
+                'category_id': item.category.id if item.category else None,
+                'size': item.size,
+                'price': float(item.price),
+                'quantity': item.quantity,
+                'min_stock': item.min_stock,
+                'status': item.status,
+                'created_at': item.created_at.isoformat()
+            }
+            for item in inventory_items
+        ],
+        'categories': [
+            {
+                'id': cat.id,
+                'name': cat.name,
+                'item_count': cat.items.count()
+            }
+            for cat in categories
+        ],
+        'stats': {
+            'total_items': total_items,
+            'total_value': float(total_value),
+            'low_stock_count': low_stock_count,
+            'categories_count': categories_count
+        }
+    }
+    
+    context = {
+        'page_title': 'Inventory Management',
+        'page_subtitle': 'Manage your product inventory with ease',
+        'initial_data': initial_data
+    }
+    
+    return render(request, 'pages/inventory.html', context)
+
+@login_required(login_url="/login")
+def dashboard(request):
+    business_owner = request.user
+    # Total products
+    total_products = InventoryItem.objects.filter(business_owner=business_owner).count()
+    # Total sales (sum of all sales)
+    total_sales = Sale.objects.filter(business_owner=business_owner).aggregate(total=Sum('total_amount'))['total'] or 0
+    # Low stock items
+    low_stock_count = InventoryItem.objects.filter(business_owner=business_owner, quantity__lte=F('min_stock')).count()
+    # Categories count
+    categories_count = Category.objects.filter(business_owner=business_owner).count()
+    # Recent products
+    recent_products = InventoryItem.objects.filter(business_owner=business_owner).order_by('-created_at')[:5]
+    # Recent sales
+    recent_sales = Sale.objects.filter(business_owner=business_owner).order_by('-created_at')[:5]
+    context = {
+        'total_products': total_products,
+        'total_sales': float(total_sales),
+        'low_stock_count': low_stock_count,
+        'categories_count': categories_count,
+        'recent_products': recent_products,
+        'recent_sales': recent_sales,
+    }
+    return render(request, 'pages/dashboard.html', context)
+
+@login_required(login_url="/login")
+def sales(request):
+    business_owner = request.user
+    today = timezone.now().date()
+    sales_today = Sale.objects.filter(business_owner=business_owner, created_at__date=today)
+    # Today's sales total
+    today_sales_total = sales_today.aggregate(total=Sum('total_amount'))['total'] or 0
+    # Transactions count
+    today_transactions = sales_today.count()
+    # Items sold today
+    items_sold = SaleItem.objects.filter(sale__in=sales_today).aggregate(total=Sum('quantity'))['total'] or 0
+    # Avg sale
+    avg_sale = today_sales_total / today_transactions if today_transactions else 0
+    # Recent sales
+    recent_sales = Sale.objects.filter(business_owner=business_owner).order_by('-created_at')[:10]
+    context = {
+        'today_sales_total': float(today_sales_total),
+        'today_transactions': today_transactions,
+        'items_sold': items_sold,
+        'avg_sale': float(avg_sale),
+        'recent_sales': recent_sales,
+    }
+    return render(request, 'pages/sales.html', context)
+
+@login_required(login_url="/login")
+def reports(request):
+    business_owner = request.user
+    # Total sales
+    total_sales = Sale.objects.filter(business_owner=business_owner).aggregate(total=Sum('total_amount'))['total'] or 0
+    # Total orders
+    total_orders = Sale.objects.filter(business_owner=business_owner).count()
+    # Avg order value
+    avg_order_value = total_sales / total_orders if total_orders else 0
+    # Top product (by quantity sold)
+    top_product = SaleItem.objects.filter(sale__business_owner=business_owner)\
+        .values('item__name').annotate(total_sold=Sum('quantity')).order_by('-total_sold').first()
+    top_product_name = top_product['item__name'] if top_product else '-'
+    # Sales trend (last 6 months)
+    sales_trend = []
+    for i in range(5, -1, -1):
+        month = (timezone.now() - timedelta(days=30*i)).strftime('%b')
+        month_start = (timezone.now() - timedelta(days=30*i)).replace(day=1)
+        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        month_total = Sale.objects.filter(business_owner=business_owner, created_at__date__gte=month_start, created_at__date__lte=month_end).aggregate(total=Sum('total_amount'))['total'] or 0
+        sales_trend.append({'month': month, 'total': float(month_total)})
+    # Sales by category
+    sales_by_category = SaleItem.objects.filter(sale__business_owner=business_owner)\
+        .values('item__category__name').annotate(total=Sum('quantity')).order_by('-total')
+    context = {
+        'total_sales': float(total_sales),
+        'total_orders': total_orders,
+        'avg_order_value': float(avg_order_value),
+        'top_product': top_product_name,
+        'sales_trend': sales_trend,
+        'sales_by_category': sales_by_category,
+    }
+    return render(request, 'pages/reports.html', context)
+
+@login_required(login_url="/login")
+def subscription(request):
+    business_owner = request.user
+    
+    context = {
+        'page_title': 'Subscription Management',
+        'page_subtitle': 'Manage your subscription plan',
+        'subscription_status': {
+            'is_active': business_owner.has_paid,
+            'plan_type': 'Premium' if business_owner.has_paid else 'Free',
+            'expiry_date': None,  # Add if you implement subscription expiry
+            'features': {
+                'inventory_management': True,
+                'customer_management': True,
+                'sales_tracking': business_owner.has_paid,
+                'advanced_reports': business_owner.has_paid,
+                'multiple_users': business_owner.has_paid
+            }
+        }
+    }
+    return render(request, 'pages/subscription.html', context)
+
+def landing(request):
+    # Render the landing page with signup form
+    return render(request, 'landing.html')
+
+@login_required(login_url="/login")
+def customer_list(request):
+    """View for listing and managing customers"""
+    return render(request, 'pages/customer.html', {
+        'page_title': 'Customer Management',
+        'page_subtitle': 'Manage your customers'
+    })
+
+# good to go
+@login_required(login_url="/login")
+def category_list(request):
+    """View for listing and managing categories."""
+    business_owner = request.user
+    
+    # Get all categories and annotate with the count of related inventory items.
+    # This is the single source of truth for the initial page load.
+    categories_queryset = Category.objects.filter(
+        business_owner=business_owner
+    ).annotate(
+        item_count=Count('items')
+    ).order_by('-created_at')
+
+    # Serialize the queryset to pass it to JavaScript.
+    # Using our DRF serializer ensures the data format is consistent with the API.
+    serializer = CategorySerializer(categories_queryset, many=True)
+    categories_json = json.dumps(serializer.data)
+
+    return render(request, 'pages/category.html', {
+        'page_title': 'Category Management',
+        'page_subtitle': 'Manage your product categories',
+        'categories': categories_queryset,      # For the initial server-side render by Django templates.
+        'categories_json': categories_json, # For initializing the state in client-side JavaScript.
+    })
+
+
+
+@login_required
+@require_POST
+def add_customer(request):
+    """View for adding a new customer"""
+    try:
+        customer = Customer.objects.create(
+            business_owner=request.user,
+            first_name=request.POST.get('first_name'),
+            last_name=request.POST.get('last_name'),
+            email=request.POST.get('email'),
+            phone=request.POST.get('phone')
+        )
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Customer added successfully',
+            'customer': {
+                'id': customer.id,
+                'name': f"{customer.first_name} {customer.last_name}",
+                'email': customer.email,
+                'phone': customer.phone
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
+
+@login_required
+@require_POST
+def edit_customer(request, customer_id):
+    """View for editing an existing customer"""
+    customer = get_object_or_404(Customer, id=customer_id, business_owner=request.user)
+    try:
+        customer.first_name = request.POST.get('first_name')
+        customer.last_name = request.POST.get('last_name')
+        customer.email = request.POST.get('email')
+        customer.phone = request.POST.get('phone')
+        customer.save()
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Customer updated successfully'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
+
+@login_required
+@require_POST
+def delete_customer(request, customer_id):
+    """View for deleting a customer"""
+    customer = get_object_or_404(Customer, id=customer_id, business_owner=request.user)
+    try:
+        customer.delete()
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Customer deleted successfully'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
+
+
+@login_required
+@require_POST
+def add_category(request):
+    """View for adding a new category"""
+    try:
+        category = Category.objects.create(
+            business_owner=request.user,
+            name=request.POST.get('name')
+        )
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Category added successfully',
+            'category': {
+                'id': category.id,
+                'name': category.name
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
+
+@login_required
+@require_POST
+def edit_category(request, category_id):
+    """View for editing an existing category"""
+    category = get_object_or_404(Category, id=category_id, business_owner=request.user)
+    try:
+        category.name = request.POST.get('name')
+        category.save()
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Category updated successfully'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
+
+@login_required
+@require_POST
+def delete_category(request, category_id):
+    """View for deleting a category"""
+    category = get_object_or_404(Category, id=category_id, business_owner=request.user)
+    try:
+        category.delete()
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Category deleted successfully'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)

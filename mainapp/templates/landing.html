@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EasyBook Inventory</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+    body { background: #f9f9f9; color: #0e76a8; }
+    header { background: #0e76a8; padding: 1rem 2rem; color: white; display: flex; justify-content: space-between; align-items: center; }
+    nav a { color: white; margin-left: 1.5rem; text-decoration: none; font-weight: 600; }
+    .hero { padding: 4rem 2rem; text-align: center; background: #fff; }
+    .hero h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+    .hero p { font-size: 1.2rem; margin-bottom: 2rem; }
+    .cta-btn { background: #0e76a8; color: white; padding: 1rem 2rem; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer; }
+    .features { padding: 3rem 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; }
+    .feature { background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+    .footer { text-align: center; padding: 2rem; background: #0e76a8; color: white; margin-top: 3rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>EasyBook Inventory</h1>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="{% url 'login' %}">Login</a>
+      <a href="{% url 'signup' %}">Get Started</a>
+      <a href="https://wa.me/2348122604240" target="_blank" style="display:flex; align-items:center; gap: 0.3rem; color: white; text-decoration:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M20.52 3.48A11.91 11.91 0 0012 0C5.37 0 0 5.37 0 12a11.9 11.9 0 001.64 6L0 24l6-1.64A11.91 11.91 0 0012 24c6.63 0 12-5.37 12-12 0-3.2-1.25-6.21-3.48-8.52zm-8.52 17.1a9.6 9.6 0 01-5.1-1.5l-.36-.21-3.6.96.96-3.6-.24-.36a9.6 9.6 0 1111.88 4.2 9.5 9.5 0 01-3.54.15zm5.1-6.3c-.27-.14-1.6-.79-1.85-.88-.24-.09-.42-.14-.6.14-.18.27-.7.88-.86 1.06-.16.18-.32.2-.6.07-.27-.14-1.14-.42-2.17-1.34-.8-.71-1.34-1.58-1.5-1.85-.16-.27-.02-.42.12-.56.12-.12.27-.32.4-.48.14-.16.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.6-1.44-.82-1.97-.22-.52-.44-.45-.6-.46-.16-.01-.34-.01-.52-.01-.18 0-.48.07-.73.34-.24.27-.92.9-.92 2.2 0 1.3.94 2.56 1.07 2.74.14.18 1.85 2.82 4.48 3.95.63.27 1.12.43 1.5.55.63.2 1.2.17 1.65.1.5-.07 1.6-.65 1.83-1.28.22-.63.22-1.17.16-1.28-.07-.11-.24-.18-.5-.32z"/></svg>
+        
+      </a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>EassyBook Inventory Management Software</h1>
+    <p>Track stock, sales, and profits from anywhere — all in one place.</p>
+    <a href="/signup"><button class="cta-btn">Start & get Free Printer</button></a>
+  </section>
+
+  <section class="features" id="features">
+    <div class="feature">
+      <h3>Real-time Stock Tracking</h3>
+      <p>Monitor your stock levels and movements anytime, anywhere.</p>
+    </div>
+    <div class="feature">
+      <h3>Sales Dashboard</h3>
+      <p>See all sales activity at a glance — daily, weekly, monthly.</p>
+    </div>
+    <div class="feature">
+      <h3>Invoicing + Receipts</h3>
+      <p>Generate professional invoices and send digital receipts.</p>
+    </div>
+    <div class="feature">
+      <h3>Multi-user Access</h3>
+      <p>Add staff with roles to help manage your store.</p>
+    </div>
+  </section>
+
+  <section class="hero" id="pricing">
+    <h1>Affordable Pricing</h1>
+    <p>₦30,000/month or ₦300,000/year. Pay and get instant access.</p>
+    <button class="cta-btn" onclick="payWithPaystack('monthly')" style="margin-right: 2rem;">Subscribe Monthly – ₦30,000</button>
+<button class="cta-btn" onclick="payWithPaystack('yearly')">Subscribe Yearly – ₦300,000</button>
+
+  </section>
+
+  <footer class="footer">
+    <a href="https://wa.me/2348122604240" target="_blank" style="display:flex; align-items:center; justify-content:center; gap: 0.3rem; color: white; text-decoration:none; margin-bottom: 0.5rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M20.52 3.48A11.91 11.91 0 0012 0C5.37 0 0 5.37 0 12a11.9 11.9 0 001.64 6L0 24l6-1.64A11.91 11.91 0 0012 24c6.63 0 12-5.37 12-12 0-3.2-1.25-6.21-3.48-8.52zm-8.52 17.1a9.6 9.6 0 01-5.1-1.5l-.36-.21-3.6.96.96-3.6-.24-.36a9.6 9.6 0 1111.88 4.2 9.5 9.5 0 01-3.54.15zm5.1-6.3c-.27-.14-1.6-.79-1.85-.88-.24-.09-.42.14-.6.14-.18.27-.7.88-.86 1.06-.16.18-.32.2-.6.07-.27-.14-1.14-.42-2.17-1.34-.8-.71-1.34-1.58-1.5-1.85-.16-.27-.02-.42.12-.56.12-.12.27-.32.4-.48.14-.16.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.6-1.44-.82-1.97-.22-.52-.44-.45-.6-.46-.16-.01-.34-.01-.52-.01-.18 0-.48.07-.73.34-.24.27-.92.9-.92 2.2 0 1.3.94 2.56 1.07 2.74.14.18 1.85 2.82 4.48 3.95.63.27 1.12.43 1.5.55.63.2 1.2.17 1.65.1.5-.07 1.6-.65 1.83-1.28.22-.63.22-1.17.16-1.28-.07-.11-.24-.18-.5-.32z"/></svg>
+      Whatsapp +234 8122604240
+    </a>
+    <a href="mailto:tosinakinlofa3@gmail.com" target="_blank" style="display:flex; align-items:center; justify-content:center; gap: 0.3rem; color: white; text-decoration:none; margin-bottom: 0.5rem;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+      tosinakinlofa3@gmail.com
+    </a>
+    &copy; 2025 EasyBook Inventory. +234 8122604240 All rights reserved.
+  </footer>
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+  <script>
+    function payWithPaystack(plan) {
+      const email = prompt("Enter your email:");
+      const monthlyPlan = "PLN_hmolnhz0h7d70y1"; // Replace with your real Paystack monthly plan code
+      const yearlyPlan = "PLN_xcvqqlpnjge086j";   // Replace with your real Paystack yearly plan code
+
+      const handler = PaystackPop.setup({
+        key: 'pk_live_b122dd5003bdfeeb77b9390abc9c423d71bd7f5d', // Replace with your public key
+        email: email,
+        plan: plan === 'monthly' ? monthlyPlan : yearlyPlan,
+        callback: function(response) {
+          alert('Payment successful! Reference: ' + response.reference);
+          window.location.href = '/dashboard'; // or wherever
+        },
+        onClose: function() {
+          alert('Transaction was not completed.');
+        }
+      });
+
+      handler.openIframe();
+    }
+  </script>
+
+</body>
+</html>

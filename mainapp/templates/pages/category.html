@@ -1,0 +1,513 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}Category Management - EasyBook{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="page-title">{{ page_title }}</h1>
+            <p class="page-subtitle">{{ page_subtitle }}</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+            <i class="fas fa-plus me-2"></i>Add Category
+        </button>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Search categories...">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-outline-secondary w-100" id="clearFilters">
+                        <i class="fas fa-times me-2"></i>Clear Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories Grid -->
+    <!-- This grid will now be dynamically rendered and updated by our JavaScript -->
+    <div class="row" id="categoriesGrid">
+        {% for category in categories %}
+        <div class="col-md-4 mb-4 category-card" data-category-id="{{ category.id }}">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-lg bg-primary rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                <i class="fas fa-tag text-white fa-lg"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-1 category-name">{{ category.name }}</h5>
+                                <small class="text-muted">Created {{ category.created_at|date:"M d, Y" }}</small>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <!-- FIX: Changed onclick to call the correct function `openEditModal` -->
+                                    <button class="dropdown-item" type="button" onclick="openEditModal({{ category.id }})">
+                                        <i class="fas fa-edit me-2"></i>Edit
+                                    </button>
+                                </li>
+                                <li>
+                                    <!-- FIX: Changed onclick to call the correct function `openDeleteModal` -->
+                                    <button class="dropdown-item text-danger" type="button" onclick="openDeleteModal({{ category.id }})">
+                                        <i class="fas fa-trash me-2"></i>Delete
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-muted">
+                            <small>
+                                <i class="fas fa-box me-1"></i>
+                                <!-- FIX: Displaying the actual item count from the view annotation -->
+                                <span class="item-count">{{ category.item_count }}</span> items
+                            </small>
+                        </div>
+                        <a href="/inventory/?category={{ category.id }}" class="btn btn-sm btn-outline-primary">
+                            View Items
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12" id="noCategoriesMessage">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <div class="text-muted">
+                        <i class="fas fa-tags fa-3x mb-3 opacity-50"></i>
+                        <p>No categories found</p>
+                        <small>Add your first category using the button above</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add/Edit/Delete Modals (HTML structure is fine, no changes needed here) -->
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Add New Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addCategoryForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label">Category Name *</label>
+                        <input type="text" class="form-control" id="categoryName" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editCategoryForm">
+                <!-- We will set the action URL dynamically with JS -->
+                {% csrf_token %}
+                <input type="hidden" id="editCategoryId" name="category_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editCategoryName" class="form-label">Category Name *</label>
+                        <input type="text" class="form-control" id="editCategoryName" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2 text-danger"></i>Delete Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this category? This action cannot be undone.</p>
+                <p class="text-danger mb-0">
+                    <small>
+                        <i class="fas fa-info-circle me-1"></i>
+                        Items in this category will not be deleted, but they will be unassigned.
+                    </small>
+                </p>
+                <input type="hidden" id="deleteCategoryId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <!-- We'll attach the confirm logic via JS -->
+                <button type="button" class="btn btn-danger" id="confirmDeleteButton">Delete Category</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // --- STATE & CONFIG ---
+    let categories = [];
+    const API_BASE_URL = '/api/v1';
+
+    // --- HELPER FUNCTIONS ---
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // A simple toast notification function
+    function showToast(message, type = 'success') {
+        // Implement your preferred toast library or a custom element here
+        console.log(`Toast (${type}): ${message}`);
+        // Example simple implementation:
+        const toast = document.createElement('div');
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.padding = '15px 20px';
+        toast.style.borderRadius = '8px';
+        toast.style.backgroundColor = type === 'error' ? '#f44336' : '#4CAF50';
+        toast.style.color = 'white';
+        toast.style.zIndex = '1056';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    function getApiHeaders() {
+        return {
+            'Authorization': `Token {{ request.user.auth_token.key }}`,
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        };
+    }
+    
+    function closeModal(modalId) {
+        const modalEl = document.getElementById(modalId);
+        if (modalEl) {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        }
+    }
+
+
+    // --- RENDERING ---
+
+    /**
+     * Creates the HTML for a single category card.
+     * This ensures the dynamically created cards match the server-rendered ones.
+     * @param {object} category - The category object.
+     * @returns {string} - The HTML string for the category card.
+     */
+    function createCategoryCardHTML(category) {
+        return `
+            <div class="col-md-4 mb-4 category-card" data-category-id="${category.id}">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-lg bg-primary rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-tag text-white fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-1 category-name">${category.name}</h5>
+                                    <small class="text-muted">Created ${category.created_at_formatted}</small>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <button class="dropdown-item" type="button" onclick="openEditModal(${category.id})">
+                                            <i class="fas fa-edit me-2"></i>Edit
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item text-danger" type="button" onclick="openDeleteModal(${category.id})">
+                                            <i class="fas fa-trash me-2"></i>Delete
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted">
+                                <small>
+                                    <i class="fas fa-box me-1"></i>
+                                    <span class="item-count">${category.item_count}</span> items
+                                </small>
+                            </div>
+                            <a href="/inventory/?category=${category.id}" class="btn btn-sm btn-outline-primary">
+                                View Items
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    /**
+     * Renders a list of categories to the grid.
+     * @param {array} categoriesToDisplay - The array of category objects to render.
+     */
+    function renderCategories(categoriesToDisplay) {
+        const grid = document.getElementById('categoriesGrid');
+        const noCategoriesMessage = document.getElementById('noCategoriesMessage');
+        
+        grid.innerHTML = ''; // Clear the grid first
+
+        if (categoriesToDisplay.length === 0) {
+            if (noCategoriesMessage) {
+                // If the "empty" message exists in the DOM, re-add it.
+                grid.appendChild(noCategoriesMessage);
+            } else {
+                // If it doesn't exist (e.g., page started with items), create it.
+                grid.innerHTML = `
+                    <div class="col-12" id="noCategoriesMessage">
+                        <div class="card"><div class="card-body text-center py-5">
+                            <div class="text-muted">
+                                <i class="fas fa-tags fa-3x mb-3 opacity-50"></i>
+                                <p>No categories found</p>
+                            </div>
+                        </div></div>
+                    </div>`;
+            }
+        } else {
+            categoriesToDisplay.forEach(category => {
+                const cardHTML = createCategoryCardHTML(category);
+                grid.insertAdjacentHTML('beforeend', cardHTML);
+            });
+        }
+    }
+
+
+    // --- API & EVENT HANDLERS ---
+    
+    // Add Category
+    async function handleAddCategory(event) {
+        event.preventDefault();
+        const form = event.target;
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
+
+        const data = { name: form.querySelector('[name="name"]').value };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/categories/`, {
+                method: 'POST',
+                headers: getApiHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.name?.[0] || 'Failed to add category');
+            }
+            
+            const newCategory = await response.json();
+            categories.unshift(newCategory); // Add to the beginning of the array
+            renderCategories(categories);
+            
+            form.reset();
+            closeModal('addCategoryModal');
+            showToast('Category added successfully', 'success');
+        } catch (error) {
+            console.error('Error:', error);
+            showToast(error.message, 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Add Category';
+        }
+    }
+
+    // Open Edit Modal
+    function openEditModal(categoryId) {
+        const category = categories.find(c => c.id === categoryId);
+        if (!category) return;
+
+        const form = document.getElementById('editCategoryForm');
+        form.dataset.categoryId = categoryId; // Store ID on the form's dataset
+        form.querySelector('#editCategoryId').value = categoryId;
+        form.querySelector('#editCategoryName').value = category.name;
+
+        const modal = new bootstrap.Modal(document.getElementById('editCategoryModal'));
+        modal.show();
+    }
+    
+    // Edit Category (form submission)
+    async function handleEditCategory(event) {
+        event.preventDefault();
+        const form = event.target;
+        const categoryId = form.dataset.categoryId;
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+        const data = { name: form.querySelector('[name="name"]').value };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/`, {
+                method: 'PUT',
+                headers: getApiHeaders(),
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.name?.[0] || 'Failed to update category');
+            }
+            
+            const updatedCategory = await response.json();
+            const index = categories.findIndex(c => c.id === updatedCategory.id);
+            if (index !== -1) {
+                categories[index] = updatedCategory;
+            }
+            renderCategories(categories);
+            
+            closeModal('editCategoryModal');
+            showToast('Category updated successfully', 'success');
+        } catch (error) {
+            console.error('Error:', error);
+            showToast(error.message, 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Save Changes';
+        }
+    }
+
+    // Open Delete Modal
+    function openDeleteModal(categoryId) {
+        const modalEl = document.getElementById('deleteCategoryModal');
+        const confirmButton = modalEl.querySelector('#confirmDeleteButton');
+
+        // Clone and replace the button to remove old event listeners
+        const newConfirmButton = confirmButton.cloneNode(true);
+        confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
+
+        // Add a fresh event listener
+        newConfirmButton.addEventListener('click', () => handleDeleteCategory(categoryId), { once: true });
+        
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    // Delete Category (confirmation)
+    async function handleDeleteCategory(categoryId) {
+        const modalEl = document.getElementById('deleteCategoryModal');
+        const confirmButton = modalEl.querySelector('#confirmDeleteButton');
+        confirmButton.disabled = true;
+        confirmButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/`, {
+                method: 'DELETE',
+                headers: getApiHeaders()
+            });
+            
+            if (response.status !== 204) { // 204 No Content is the success status for DELETE
+                throw new Error('Failed to delete category');
+            }
+            
+            categories = categories.filter(c => c.id !== categoryId);
+            renderCategories(categories);
+
+            closeModal('deleteCategoryModal');
+            showToast('Category deleted successfully', 'success');
+        } catch (error) {
+            console.error('Error:', error);
+            showToast(error.message, 'error');
+        } finally {
+            confirmButton.disabled = false;
+            confirmButton.textContent = 'Delete Category';
+        }
+    }
+
+    // Search/Filter
+    function filterCategories() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const filteredCategories = categories.filter(category => 
+            category.name.toLowerCase().includes(searchTerm)
+        );
+        renderCategories(filteredCategories);
+    }
+
+
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize state from data passed by Django
+        try {
+            categories = JSON.parse('{{ categories_json|escapejs }}');
+        } catch(e) {
+            console.error("Could not parse categories JSON from template.", e);
+            showToast("Error loading category data.", "error");
+            categories = [];
+        }
+
+        // Event Listeners
+        document.getElementById('addCategoryForm').addEventListener('submit', handleAddCategory);
+        document.getElementById('editCategoryForm').addEventListener('submit', handleEditCategory);
+        document.getElementById('searchInput').addEventListener('input', filterCategories);
+        document.getElementById('clearFilters').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            renderCategories(categories); // Display all original categories
+        });
+    });
+
+</script>
+{% endblock %}
+
