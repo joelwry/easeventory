@@ -189,6 +189,47 @@ class SaleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(business_owner=self.request.user)
 
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        business_owner = request.user
+        customer_id = data.get('customer')
+        items = data.get('items', [])
+        total_amount = data.get('total_amount')
+        payment_method = data.get('payment_method')
+
+        # Validate customer
+        customer = get_object_or_404(Customer, id=customer_id, business_owner=business_owner)
+
+        # Validate items and stock
+        sale_items = []
+        for item in items:
+            item_id = item.get('item_id')
+            quantity = int(item.get('quantity', 0))
+            price_at_sale = item.get('price_at_sale')
+            inventory_item = get_object_or_404(InventoryItem, id=item_id, business_owner=business_owner)
+            if inventory_item.quantity < quantity:
+                return Response({
+                    'error': f'Not enough stock for {inventory_item.name}. Available: {inventory_item.quantity}, Requested: {quantity}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            sale_items.append((inventory_item, quantity, price_at_sale))
+
+        # Create Sale
+        sale = Sale.objects.create(
+            business_owner=business_owner,
+            customer=customer,
+            total_amount=total_amount
+        )
+
+        # Create SaleItems (SaleItem.save() will deduct inventory)
+        for inventory_item, quantity, price_at_sale in sale_items:
+            sale_item = sale.saleitem_set.create(
+                item=inventory_item,
+                quantity=quantity,
+                price_at_sale=price_at_sale
+            )
+
+        serializer = self.get_serializer(sale)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 @csrf_exempt
 def paystack_callback(request):
