@@ -141,24 +141,11 @@
                 </div>
                 <div class="card-footer">
                     <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <div class="d-flex justify-content-between">
-                                <span>Subtotal:</span>
-                                <span id="subtotal">₦0.00</span>
-                            </div>
+                        <div class="col-12 mb-2">
+                            <select class="form-select" id="customerSelect">
+                                <option value="">Select Customer</option>
+                            </select>
                         </div>
-                        <div class="col-6">
-                            <div class="d-flex justify-content-between">
-                                <span>Tax (7.5%):</span>
-                                <span id="tax">₦0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0">Total:</h5>
-                        <h4 class="mb-0 text-primary" id="cartTotal">₦0.00</h4>
-                    </div>
-                    <div class="row g-2">
                         <div class="col-6">
                             <select class="form-select" id="paymentMethod">
                                 <option value="cash">Cash</option>
@@ -169,6 +156,10 @@
                         <div class="col-6">
                             <input type="number" class="form-control" id="amountReceived" placeholder="Amount received" step="0.01">
                         </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Total:</h5>
+                        <h4 class="mb-0 text-primary" id="cartTotal">₦0.00</h4>
                     </div>
                     <div class="mt-2" id="changeAmount" style="display: none;">
                         <div class="alert alert-info mb-0">
@@ -283,6 +274,19 @@
         </div>
     </div>
 </div>
+
+<style>
+#productGrid {
+    max-height: 500px;
+    min-height: 300px;
+    overflow-y: auto;
+}
+#cartItems {
+    max-height: 400px;
+    min-height: 200px;
+    overflow-y: auto;
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -298,40 +302,92 @@
 
     let cart = [];
     let products = [];
+    let allProducts = [];
+    let customers = [];
+    let categories = [];
+    let currentPage = 1;
+    let totalPages = 1;
 
     // Initialize page
     document.addEventListener('DOMContentLoaded', function() {
+        loadCategories();
         loadProducts();
+        loadCustomers();
         setupEventListeners();
     });
 
-    async function loadProducts() {
+    async function loadCategories() {
         try {
-            const response = await fetch(`${API_BASE_URL}/inventory/`, {
+            const response = await fetch(`${API_BASE_URL}/category/list-count/`, { headers });
+            if (!response.ok) throw new Error('Failed to fetch categories');
+            categories = await response.json();
+            renderCategories();
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Error loading categories', 'error');
+        }
+    }
+
+    function renderCategories() {
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (!categoryFilter) return;
+        categoryFilter.innerHTML = '<option value="">All Categories</option>';
+        categories.forEach(cat => {
+            categoryFilter.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+        });
+    }
+
+    async function loadProducts(page = 1) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/inventory/list/?page=${page}`, {
                 headers: headers
             });
             if (!response.ok) throw new Error('Failed to fetch products');
-            products = await response.json();
+            const data = await response.json();
+            products = data.items;
+            if (page === 1) {
+                allProducts = [...products];
+            } else {
+                allProducts = [...allProducts, ...products];
+            }
+            currentPage = data.page;
+            totalPages = data.total_pages;
             renderProducts();
+            renderLoadMoreButton();
         } catch (error) {
             console.error('Error:', error);
             showToast('Error loading products', 'error');
         }
     }
 
+    function renderLoadMoreButton() {
+        let loadMoreBtn = document.getElementById('loadMoreBtn');
+        if (!loadMoreBtn) {
+            const productGrid = document.getElementById('productGrid');
+            loadMoreBtn = document.createElement('button');
+            loadMoreBtn.id = 'loadMoreBtn';
+            loadMoreBtn.className = 'btn btn-outline-primary w-100 my-3';
+            loadMoreBtn.textContent = 'Load More';
+            loadMoreBtn.onclick = function() {
+                if (currentPage < totalPages) {
+                    loadProducts(currentPage + 1);
+                }
+            };
+            productGrid.parentElement.appendChild(loadMoreBtn);
+        }
+        loadMoreBtn.style.display = (currentPage < totalPages) ? 'block' : 'none';
+    }
+
     function renderProducts() {
         const productGrid = document.getElementById('productGrid');
         productGrid.innerHTML = '';
-
         const searchTerm = document.getElementById('productSearch').value.toLowerCase();
         const categoryFilter = document.getElementById('categoryFilter').value;
-
-        const filteredProducts = products.filter(product => {
+        const filteredProducts = allProducts.filter(product => {
             const matchesSearch = product.name.toLowerCase().includes(searchTerm);
-            const matchesCategory = !categoryFilter || product.category === categoryFilter;
+            const matchesCategory = !categoryFilter || (product.category_name && product.category_name === categoryFilter);
             return matchesSearch && matchesCategory && product.quantity > 0;
         });
-
         filteredProducts.forEach(product => {
             const productCard = `
                 <div class="col-md-6 mb-3">
@@ -353,6 +409,85 @@
             `;
             productGrid.innerHTML += productCard;
         });
+        renderLoadMoreButton();
+    }
+
+    function selectProduct(productId) {
+        window.selectedProductId = productId;
+        const product = allProducts.find(p => p.id === productId);
+        if (!product) return;
+        document.getElementById('quantity').value = 1;
+        document.getElementById('availableStock').textContent = product.quantity;
+        const modal = new bootstrap.Modal(document.getElementById('quantityModal'));
+        modal.show();
+    }
+
+    function clearCart() {
+        cart = [];
+        renderCart();
+    }
+
+    async function loadCustomers() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/customers/list/`, {
+                headers: headers
+            });
+            if (!response.ok) throw new Error('Failed to fetch customers');
+            customers = await response.json();
+            renderCustomers();
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Error loading customers', 'error');
+        }
+    }
+
+    function renderCustomers() {
+        const customerSelect = document.getElementById('customerSelect');
+        if (!customerSelect) return;
+        customerSelect.innerHTML = '<option value="">Select Customer</option>';
+        customers.forEach(customer => {
+            customerSelect.innerHTML += `<option value="${customer.id}">${customer.first_name} ${customer.last_name}</option>`;
+        });
+    }
+
+    function setupEventListeners() {
+        // Product search
+        const searchInput = document.getElementById('productSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', renderProducts);
+        }
+        // Category filter
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', renderProducts);
+        }
+    }
+
+    // Add to cart logic with stock validation
+    function addToCart() {
+        const productId = window.selectedProductId;
+        const quantity = parseInt(document.getElementById('quantity').value, 10);
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+        if (quantity > product.quantity) {
+            showToast('Not enough stock for this product. Please update inventory.', 'warning');
+            return;
+        }
+        // Add or update cart item
+        const existing = cart.find(item => item.id === productId);
+        if (existing) {
+            if (existing.quantity + quantity > product.quantity) {
+                showToast('Not enough stock for this product. Please update inventory.', 'warning');
+                return;
+            }
+            existing.quantity += quantity;
+        } else {
+            cart.push({ ...product, quantity });
+        }
+        renderCart();
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('quantityModal'));
+        if (modal) modal.hide();
     }
 
     async function completeSale() {
@@ -443,6 +578,45 @@
         container.className = 'toast-container position-fixed top-0 end-0 p-3';
         document.body.appendChild(container);
         return container;
+    }
+
+    function renderCart() {
+        const cartItemsDiv = document.getElementById('cartItems');
+        if (!cartItemsDiv) return;
+        if (cart.length === 0) {
+            cartItemsDiv.innerHTML = `<div class="text-center text-muted py-5" id="emptyCart">
+                <i class="fas fa-shopping-cart fa-3x mb-3 opacity-50"></i>
+                <p>Your cart is empty</p>
+                <small>Add items from the product selection</small>
+            </div>`;
+            document.getElementById('completeSaleBtn').disabled = true;
+            document.getElementById('subtotal').textContent = '₦0.00';
+            document.getElementById('tax').textContent = '₦0.00';
+            document.getElementById('cartTotal').textContent = '₦0.00';
+            return;
+        }
+        let html = '';
+        let subtotal = 0;
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            subtotal += itemTotal;
+            html += `<div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong>${item.name}</strong><br>
+                    <small>Qty: ${item.quantity} × ₦${parseFloat(item.price).toLocaleString()}</small>
+                </div>
+                <div>
+                    <span class="fw-bold">₦${itemTotal.toLocaleString()}</span>
+                </div>
+            </div>`;
+        });
+        cartItemsDiv.innerHTML = html;
+        const tax = subtotal * 0.075;
+        const total = subtotal + tax;
+        document.getElementById('subtotal').textContent = `₦${subtotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('tax').textContent = `₦${tax.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('cartTotal').textContent = `₦${total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        document.getElementById('completeSaleBtn').disabled = false;
     }
 </script>
 {% endblock %}
