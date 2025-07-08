@@ -20,7 +20,6 @@
         </div>
     </div>
 
-    <!-- Analytics Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card bg-primary text-white">
@@ -84,7 +83,6 @@
         </div>
     </div>
 
-    <!-- Charts Row -->
     <div class="row mb-4">
         <div class="col-lg-8 mb-4">
             <div class="card h-100">
@@ -112,7 +110,6 @@
         </div>
     </div>
 
-    <!-- Receipts Section -->
     <div class="card">
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-center">
@@ -140,28 +137,11 @@
                             <th>Customer</th>
                             <th>Items</th>
                             <th>Total</th>
-                            <th>Payment Method</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="receiptsTable">
-                        <!-- Sample receipt data -->
-                        <tr>
-                            <td><code>RCP001</code></td>
-                            <td>2024-03-15 14:30</td>
-                            <td>John Doe</td>
-                            <td>3 items</td>
-                            <td>₦25,500.00</td>
-                            <td><span class="badge bg-success">Card</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="viewReceipt('RCP001')">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="printReceipt('RCP001')">
-                                    <i class="fas fa-print"></i>
-                                </button>
-                            </td>
-                        </tr>
+                        <!-- Dynamic rows will be inserted here by JS -->
                     </tbody>
                 </table>
             </div>
@@ -184,9 +164,8 @@
     </div>
 </div>
 
-<!-- Receipt Modal -->
 <div class="modal fade" id="receiptModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -194,15 +173,14 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4">
                 <div class="receipt" id="receiptContent">
-                    <!-- Receipt content will be populated here -->
-                </div>
+                    </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="printReceipt()">
-                    <i class="fas fa-print me-2"></i>Print
+                <button type="button" class="btn btn-primary" onclick="printReceiptFromModal()">
+                    <i class="fas fa-print me-2"></i>Print Receipt
                 </button>
             </div>
         </div>
@@ -212,24 +190,288 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    /* Custom Receipt Styles for a Branded Look */
+    .receipt-container {
+        max-width: 380px; /* Wider for a better feel, common thermal printer width is 80mm (~3 inches) */
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #fff;
+        border: 1px solid #eee;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        font-family: 'Roboto Mono', monospace; /* A more modern monospace font */
+        color: #333;
+        line-height: 1.5;
+        font-size: 0.9em;
+        position: relative; /* For the diagonal stripes */
+        overflow: hidden; /* To contain the pseudo-element */
+    }
+
+    /* Subtle Diagonal Stripes in Background */
+    .receipt-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: repeating-linear-gradient(
+            -45deg,
+            #f8f8f8,
+            #f8f8f8 10px,
+            #ffffff 10px,
+            #ffffff 20px
+        );
+        opacity: 0.5;
+        z-index: 0;
+    }
+
+    .receipt-content-wrapper {
+        position: relative; /* To make content appear above pseudo-element */
+        z-index: 1;
+    }
+
+
+    .receipt-header {
+        text-align: center;
+        margin-bottom: 25px;
+        position: relative;
+        padding-bottom: 15px;
+    }
+
+    .receipt-header h4 {
+        font-size: 1.8em; /* Larger for prominence */
+        color: #2563eb; /* EasyBook primary color */
+        margin-bottom: 5px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .receipt-header h4 i {
+        font-size: 1.5em; /* Icon size */
+        color: #2563eb;
+    }
+
+    .receipt-header p {
+        font-size: 0.85em;
+        margin: 2px 0;
+        color: #555;
+    }
+
+    .receipt-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 2px;
+        background-color: #ddd;
+    }
+
+    .receipt-details,
+    .receipt-items,
+    .receipt-summary {
+        margin-bottom: 20px;
+        padding: 10px 0;
+        border-bottom: 1px dashed #ddd; /* Dashed lines for a receipt feel */
+    }
+
+    .receipt-details {
+        border-top: 1px dashed #ddd;
+    }
+
+    .receipt-details > div,
+    .receipt-summary > div {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
+
+    .receipt-items .item-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        border-bottom: 1px dotted #eee; /* Lighter dotted line for items */
+        padding-bottom: 5px;
+    }
+
+    .receipt-items .item-row:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .receipt-items .item-name {
+        flex-grow: 1;
+        font-weight: 600;
+    }
+
+    .receipt-items .item-qty {
+        width: 40px; /* Fixed width for quantity */
+        text-align: center;
+    }
+
+    .receipt-items .item-price {
+        width: 80px; /* Fixed width for price */
+        text-align: right;
+    }
+
+    .receipt-summary .label {
+        font-weight: 600;
+    }
+    .receipt-summary .value {
+        font-weight: normal;
+    }
+    .receipt-summary .total {
+        font-size: 1.2em;
+        font-weight: 700;
+        color: #2563eb;
+        padding-top: 10px;
+        border-top: 2px solid #2563eb; /* Stronger line for total */
+    }
+
+    .receipt-footer {
+        text-align: center;
+        margin-top: 25px;
+        font-size: 0.85em;
+        color: #666;
+    }
+
+    .receipt-footer .thank-you {
+        font-weight: 600;
+        color: #2563eb;
+        margin-bottom: 10px;
+    }
+
+    /* Print Specific Styles */
+    @media print {
+        body * {
+            visibility: hidden; /* Hide everything by default */
+        }
+        #receiptModal, #receiptModal * {
+            visibility: hidden !important; /* Ensure modal itself is hidden */
+        }
+        #receiptContent, #receiptContent * {
+            visibility: visible !important; /* Make receipt content visible */
+        }
+        .modal-body {
+            visibility: visible !important;
+            position: absolute; /* Position receipt content for printing */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: auto;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .receipt-container {
+            width: 80mm; /* Common thermal printer width */
+            max-width: 80mm;
+            min-width: unset;
+            box-shadow: none;
+            border: none;
+            margin: 0;
+            padding: 10mm; /* Padding for print margins */
+            font-size: 10pt; /* Adjust font size for print */
+            line-height: 1.3;
+        }
+        .receipt-container::before {
+            display: none; /* Hide background stripes for print */
+        }
+        .receipt-header h4 {
+            font-size: 1.4em;
+        }
+        .receipt-header p {
+            font-size: 0.8em;
+        }
+        .receipt-details > div,
+        .receipt-items .item-row,
+        .receipt-summary > div {
+            margin-bottom: 3px;
+        }
+        .receipt-items .item-name,
+        .receipt-items .item-qty,
+        .receipt-items .item-price {
+            font-size: 0.9em;
+        }
+        .receipt-summary .total {
+            font-size: 1.1em;
+        }
+        .receipt-footer {
+            margin-top: 15px;
+            font-size: 0.8em;
+        }
+        /* Hide modal close/print buttons in print */
+        .modal-footer {
+            display: none !important;
+        }
+    }
+</style>
 <script>
+    // API endpoints
+    const API_BASE_URL = '/api/v1';
+    const token = '{{ request.user.auth_token.key }}';
+    const headers = {
+        'Authorization': `Token ${token}`,
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+    };
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     // Initialize charts when the page loads
     document.addEventListener('DOMContentLoaded', function() {
-        initializeCharts();
+        loadAnalytics();
         loadReceipts();
-        updateAnalytics();
     });
 
-    function initializeCharts() {
-        // Sales Trend Chart
+    async function loadAnalytics() {
+        try {
+            const response = await fetch('/api/v1/analytics/', { headers });
+            if (!response.ok) throw new Error('Failed to fetch analytics');
+            const data = await response.json();
+            renderAnalyticsCharts(data);
+            updateAnalyticsCards(data);
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+            showToast('Error loading analytics', 'danger');
+        }
+    }
+
+    function renderAnalyticsCharts(data) {
+        // Line Chart: Sales Trend
+        const salesTrend = data.sales_trend || [];
+        const months = salesTrend.map(item => item.month);
+        const totals = salesTrend.map(item => item.total);
         const salesCtx = document.getElementById('salesChart').getContext('2d');
-        new Chart(salesCtx, {
+        if (window.salesChartInstance) window.salesChartInstance.destroy();
+        window.salesChartInstance = new Chart(salesCtx, {
             type: 'line',
             data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                labels: months,
                 datasets: [{
                     label: 'Sales',
-                    data: [12000, 19000, 15000, 25000, 22000, 30000],
+                    data: totals,
                     borderColor: '#2563eb',
                     tension: 0.4,
                     fill: true,
@@ -238,157 +480,171 @@
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            callback: function(value) {
-                                return '₦' + value.toLocaleString();
-                            }
+                            callback: function(value) { return '₦' + value.toLocaleString(); }
                         }
                     }
                 }
             }
         });
-
-        // Category Distribution Chart
+        // Pie Chart: Sales by Category
+        const salesByCategory = data.sales_by_category || [];
+        const categories = salesByCategory.map(item => item['item__category__name'] || 'Uncategorized');
+        const catTotals = salesByCategory.map(item => item.total);
         const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-        new Chart(categoryCtx, {
+        if (window.categoryChartInstance) window.categoryChartInstance.destroy();
+        window.categoryChartInstance = new Chart(categoryCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Electronics', 'Clothing', 'Books', 'Others'],
+                labels: categories,
                 datasets: [{
-                    data: [40, 25, 20, 15],
+                    data: catTotals,
                     backgroundColor: [
-                        '#2563eb',
-                        '#10b981',
-                        '#f59e0b',
-                        '#64748b'
+                        '#2563eb', '#10b981', '#f59e0b', '#64748b', '#e11d48', '#6366f1', '#fbbf24', '#14b8a6'
                     ]
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
+                plugins: { legend: { position: 'bottom' } }
             }
         });
     }
 
-    function updateAnalytics() {
-        // Update analytics cards with sample data
-        document.getElementById('totalSales').textContent = '₦123,500.00';
-        document.getElementById('totalOrders').textContent = '45';
-        document.getElementById('avgOrderValue').textContent = '₦2,744.44';
-        document.getElementById('topProduct').textContent = 'Wireless Headphones';
+    function updateAnalyticsCards(data) {
+        // Update analytics cards with real data
+        const salesTrend = data.sales_trend || [];
+        const totalSales = salesTrend.reduce((sum, item) => sum + item.total, 0);
+        const totalOrders = salesTrend.reduce((sum, item) => sum + (item.total > 0 ? 1 : 0), 0);
+        const avgOrderValue = totalOrders ? (totalSales / totalOrders) : 0;
+        document.getElementById('totalSales').textContent = '₦' + totalSales.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        document.getElementById('totalOrders').textContent = totalOrders;
+        document.getElementById('avgOrderValue').textContent = '₦' + avgOrderValue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        // Top product (by category with highest total)
+        const salesByCategory = data.sales_by_category || [];
+        let topProduct = '-';
+        if (salesByCategory.length > 0) {
+            const top = salesByCategory.reduce((a, b) => (a.total > b.total ? a : b));
+            topProduct = top['item__category__name'] || 'Uncategorized';
+        }
+        document.getElementById('topProduct').textContent = topProduct;
     }
 
-    function loadReceipts() {
-        // This would typically load receipts from the server
-        // For now, we're using sample data
+    async function loadReceipts() {
+        try {
+            const response = await fetch('/api/v1/sales/', { headers });
+            if (!response.ok) throw new Error('Failed to fetch sales');
+            const sales = await response.json();
+            renderReceiptsTable(sales);
+        } catch (error) {
+            console.error('Error loading receipts:', error);
+            showToast('Error loading receipts', 'danger');
+        }
     }
 
-    function viewReceipt(receiptId) {
-        // Sample receipt data
-        const receipt = {
-            id: receiptId,
-            date: '2024-03-15 14:30',
-            customer: 'John Doe',
-            items: [
-                { name: 'Wireless Headphones', quantity: 1, price: 15000 },
-                { name: 'Cotton T-Shirt', quantity: 2, price: 3500 }
-            ],
-            subtotal: 22000,
-            tax: 1650,
-            total: 23650,
-            paymentMethod: 'Card'
-        };
+    function renderReceiptsTable(sales) {
+        const table = document.getElementById('receiptsTable');
+        table.innerHTML = '';
+        if (!Array.isArray(sales) && sales.results) sales = sales.results; // handle pagination if present
+        sales.forEach(sale => {
+            const receiptId = `RCP${String(sale.id).padStart(3, '0')}`;
+            const date = sale.created_at;
+            const customer = sale.customer_name;
+            const itemsCount = sale.items ? sale.items.length : 0;
+            const total = `₦${parseFloat(sale.total_amount).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+            table.innerHTML += `
+                <tr>
+                    <td><code>${receiptId}</code></td>
+                    <td>${date}</td>
+                    <td>${customer}</td>
+                    <td>${itemsCount} item${itemsCount !== 1 ? 's' : ''}</td>
+                    <td>${total}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="previewReceipt(${sale.id})">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
 
+    async function previewReceipt(saleId) {
+        try {
+            const response = await fetch(`/api/v1/sales/${saleId}/`, { headers });
+            if (!response.ok) throw new Error('Failed to fetch sale details');
+            const sale = await response.json();
+            renderReceiptModal(sale);
+        } catch (error) {
+            console.error('Error loading receipt:', error);
+            showToast('Error loading receipt', 'danger');
+        }
+    }
+
+    function renderReceiptModal(sale) {
         const receiptContent = document.getElementById('receiptContent');
+        const receiptId = `RCP${String(sale.id).padStart(3, '0')}`;
+        const date = sale.created_at;
+        const customer = sale.customer_name;
+        const businessName = sale.business_name || 'EasyBook Store';
+        const items = sale.items || [];
+        let subtotal = 0;
+        items.forEach(item => {
+            subtotal += parseFloat(item.price_at_sale) * item.quantity;
+        });
+        // const total = parseFloat(sale.total_amount);
+        const tax = subtotal * 0.075;
+        const total = subtotal + tax;
         receiptContent.innerHTML = `
-            <div class="receipt-container" style="max-width: 300px; margin: 0 auto; font-family: monospace;">
-                <div class="text-center mb-3">
-                    <h4 class="mb-1">EasyBook Store</h4>
-                    <p class="mb-1">123 Business Street</p>
-                    <p class="mb-1">Lagos, Nigeria</p>
-                    <p class="mb-1">Tel: +234 9032924589</p>
+            <div class="receipt-content-wrapper">
+                <div class="receipt-header">
+                    <h4><i class="fas fa-box"></i> ${businessName}</h4>
                 </div>
-                <div class="border-top border-bottom py-2 mb-2">
-                    <div class="d-flex justify-content-between">
-                        <span>Receipt #: ${receipt.id}</span>
-                        <span>${receipt.date}</span>
+                <div class="receipt-details">
+                    <div><span>Receipt #:</span><span>${receiptId}</span></div>
+                    <div><span>Date & Time:</span><span>${date}</span></div>
+                    <div><span>Customer:</span><span>${customer}</span></div>
+                </div>
+                <div class="receipt-items">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #ddd;">
+                        <span class="item-name">Item</span>
+                        <span class="item-qty">Qty</span>
+                        <span class="item-price">Amount</span>
                     </div>
-                    <div>Customer: ${receipt.customer}</div>
-                </div>
-                <div class="mb-2">
-                    ${receipt.items.map(item => `
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>${item.name} x${item.quantity}</span>
-                            <span>₦${(item.price * item.quantity).toLocaleString()}</span>
+                    ${items.map(item => `
+                        <div class="item-row">
+                            <span class="item-name">${item.item_name}</span>
+                            <span class="item-qty">${item.quantity}</span>
+                            <span class="item-price">₦${(parseFloat(item.price_at_sale) * item.quantity).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                         </div>
                     `).join('')}
                 </div>
-                <div class="border-top pt-2">
-                    <div class="d-flex justify-content-between mb-1">
-                        <span>Subtotal:</span>
-                        <span>₦${receipt.subtotal.toLocaleString()}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-1">
-                        <span>Tax (7.5%):</span>
-                        <span>₦${receipt.tax.toLocaleString()}</span>
-                    </div>
-                    <div class="d-flex justify-content-between fw-bold">
-                        <span>Total:</span>
-                        <span>₦${receipt.total.toLocaleString()}</span>
-                    </div>
+                <div class="receipt-summary">
+                    <div><span class="label">Subtotal:</span><span class="value">₦${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+                    <div><span class="label">Tax (7.5%):</span><span class="value">₦${tax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+                    <div class="total"><span class="label">Total:</span><span class="value">₦${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
                 </div>
-                <div class="text-center mt-3">
-                    <p class="mb-1">Payment Method: ${receipt.paymentMethod}</p>
-                    <p class="mb-1">Thank you for your purchase!</p>
+                <div class="receipt-footer">
+                    <p class="thank-you">Thank you for your purchase!</p>
                     <small>Please keep this receipt for your records</small>
                 </div>
             </div>
         `;
-
-        // Show modal with animation
+        // Show modal
         const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
         modal.show();
     }
 
-    function printReceipt(receiptId) {
-        const receiptContent = document.getElementById('receiptContent').innerHTML;
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Receipt ${receiptId}</title>
-                    <style>
-                        body { font-family: monospace; }
-                        @media print {
-                            body { margin: 0; padding: 20px; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${receiptContent}
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
-    }
-
     function exportReport(type) {
-        // This would typically generate and download a report file
-        showToast(`Exporting ${type} report...`, 'info');
+        let url = '';
+        if (type === 'sales') url = '/api/v1/export/sales/';
+        else if (type === 'inventory') url = '/api/v1/export/inventory/';
+        else return;
+        window.open(url, '_blank');
     }
 
     function showToast(message, type = 'info') {
@@ -417,5 +673,51 @@
         document.body.appendChild(container);
         return container;
     }
+
+    // Make printReceiptFromModal globally accessible
+    window.printReceiptFromModal = function() {
+        const printContent = document.getElementById('receiptContent').innerHTML;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>EasyBook Sales Receipt</title>
+                    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+                    <style>
+                        body { margin: 0; padding: 0; font-family: 'Roboto Mono', monospace; color: #333; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .receipt-container { width: 80mm; margin: 0 auto; padding: 15mm 10mm; background-color: #fff; line-height: 1.3; box-sizing: border-box; }
+                        .receipt-header { text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px dashed #ddd; }
+                        .receipt-header h4 { font-size: 1.4em; color: #2563eb; margin-bottom: 5px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 5px; }
+                        .receipt-header h4 i { font-size: 1.2em; color: #2563eb; }
+                        .receipt-header p { font-size: 0.8em; margin: 2px 0; color: #555; }
+                        .receipt-details, .receipt-items, .receipt-summary { margin-bottom: 15px; padding: 5px 0; border-bottom: 1px dashed #ddd; }
+                        .receipt-details { border-top: 1px dashed #ddd; }
+                        .receipt-details > div, .receipt-summary > div { display: flex; justify-content: space-between; margin-bottom: 3px; }
+                        .receipt-items .item-row { display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 1px dotted #eee; padding-bottom: 3px; }
+                        .receipt-items .item-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+                        .receipt-items .item-name { flex-grow: 1; font-weight: 500; }
+                        .receipt-items .item-qty { width: 30px; text-align: center; font-weight: 500; }
+                        .receipt-items .item-price { width: 70px; text-align: right; font-weight: 500; }
+                        .receipt-items div:first-child { font-weight: 700; padding-bottom: 5px; border-bottom: 1px solid #ccc; margin-bottom: 8px; }
+                        .receipt-summary .label { font-weight: 600; }
+                        .receipt-summary .value { font-weight: normal; }
+                        .receipt-summary .total { font-size: 1.1em; font-weight: 700; color: #2563eb; padding-top: 8px; border-top: 2px solid #2563eb; }
+                        .receipt-footer { text-align: center; margin-top: 20px; font-size: 0.8em; color: #666; }
+                        .receipt-footer .thank-you { font-weight: 600; color: #2563eb; margin-bottom: 8px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="receipt-container">
+                        ${printContent}
+                    </div>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+    };
 </script>
 {% endblock %}

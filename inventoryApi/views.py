@@ -7,14 +7,17 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.authentication import TokenAuthentication
 from django.views.decorators.csrf import csrf_exempt
 from .serializers import InventoryItemSerializer, SaleSerializer, CustomerSerializer, CategorySerializer, UserSerializer
-from django.http import HttpResponseBadRequest, JsonResponse
+from django.http import HttpResponseBadRequest, JsonResponse, HttpResponse
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate,login
 from django.contrib.auth.models import User
-from mainapp.models import Customer, SignupToken, BusinessOwner
+from mainapp.models import Customer, SaleItem, SignupToken, BusinessOwner
 from mainapp.models import InventoryItem,Sale
 from django.db.models import F, Sum
 from mainapp.models import Category
+from datetime import timedelta
+from django.utils import timezone
+import csv
 
 import logging
 
@@ -504,3 +507,52 @@ def login_api(request):
         'user': UserSerializer(user).data,
         'business_owner': business_data
     })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def analytics_data(request):
+    business_owner = request.user
+    # Sales trend (last 6 months)
+    sales_trend = []
+    for i in range(5, -1, -1):
+        month = (timezone.now() - timedelta(days=30*i)).strftime('%b')
+        month_start = (timezone.now() - timedelta(days=30*i)).replace(day=1)
+        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        month_total = Sale.objects.filter(business_owner=business_owner, created_at__date__gte=month_start, created_at__date__lte=month_end).aggregate(total=Sum('total_amount'))['total'] or 0
+        sales_trend.append({'month': month, 'total': float(month_total)})
+    # Sales by category
+    sales_by_category = SaleItem.objects.filter(sale__business_owner=business_owner)\
+        .values('item__category__name').annotate(total=Sum('quantity')).order_by('-total')
+    return Response({
+        'sales_trend': sales_trend,
+        'sales_by_category': list(sales_by_category)
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_sales_csv(request):
+    business_owner = request.user
+    sales = Sale.objects.filter(business_owner=business_owner).order_by('-created_at')
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="sales_export.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Sale ID', 'Date', 'Customer', 'Total Amount', 'Items'])
+    for sale in sales:
+        items = "; ".join([f"{si.item.name} x{si.quantity}" for si in sale.saleitem_set.all()])
+        writer.writerow([sale.id, sale.created_at.strftime('%Y-%m-%d %H:%M'), f"{sale.customer.first_name} {sale.customer.last_name}", sale.total_amount, items])
+    return response
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_inventory_csv(request):
+    business_owner = request.user
+    inventory = InventoryItem.objects.filter(business_owner=business_owner).order_by('name')
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="inventory_export.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Item ID', 'Name', 'Category', 'SKU', 'Price', 'Quantity', 'Min Stock', 'Status', 'Created At'])
+    for item in inventory:
+        writer.writerow([
+            item.id, item.name, item.category.name if item.category else '', item.sku, item.price, item.quantity, item.min_stock, item.status, item.created_at.strftime('%Y-%m-%d %H:%M')
+        ])
+    return response

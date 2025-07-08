@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from mainapp.models import Customer, Category, InventoryItem, Sale, BusinessOwner
+from mainapp.models import Customer, Category, InventoryItem, Sale, BusinessOwner, SaleItem
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -69,14 +69,22 @@ class InventoryItemSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Price must be zero or greater.")
         return value
 
+class SaleItemSerializer(serializers.ModelSerializer):
+    item_name = serializers.CharField(source='item.name', read_only=True)
+    class Meta:
+        model = SaleItem
+        fields = ['id', 'item', 'item_name', 'quantity', 'price_at_sale']
+        read_only_fields = ['id', 'item_name']
 
 class SaleSerializer(serializers.ModelSerializer):
     customer_name = serializers.SerializerMethodField()
-    
+    items = SaleItemSerializer(source='saleitem_set', many=True, read_only=True)
+    business_name = serializers.CharField(source='business_owner.business_name', read_only=True)
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M", read_only=True)
     class Meta:
         model = Sale
-        fields = ['id', 'customer', 'customer_name', 'total_amount', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'customer', 'customer_name', 'total_amount', 'created_at', 'items', 'business_name']
+        read_only_fields = ['id', 'created_at', 'items', 'business_name']
 
     def get_customer_name(self, obj):
         return f"{obj.customer.first_name} {obj.customer.last_name}"

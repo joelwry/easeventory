@@ -5,7 +5,8 @@ from .views import (
     paystack_callback,
     inventory_list_api, customer_list_api, customer_detail_api,
     category_list_count,
-    add_inventory_item, update_inventory_item, delete_inventory_item, adjust_stock, inventory_stats
+    add_inventory_item, update_inventory_item, delete_inventory_item, adjust_stock, inventory_stats,
+    analytics_data, export_sales_csv, export_inventory_csv
 )
 from . import views
 from django.contrib.auth.views import LogoutView
@@ -35,4 +36,7 @@ urlpatterns = [
     path('auth/signup/', views.signup_api, name='signup-api'),
     path('auth/login/', views.login_api, name='login-api'),
     path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
+    path('analytics/', analytics_data, name='analytics-data'),
+    path('export/sales/', export_sales_csv, name='export-sales-csv'),
+    path('export/inventory/', export_inventory_csv, name='export-inventory-csv'),
 ]
