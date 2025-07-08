@@ -21,7 +21,7 @@
     </div>
 
     <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-3">
+        <div class="col-xl-6 col-md-6 mb-3">
             <div class="card bg-primary text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -36,42 +36,12 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-0">Total Orders</h6>
-                            <h2 class="mb-0" id="totalOrders">0</h2>
-                        </div>
-                        <div class="icon">
-                            <i class="fas fa-shopping-cart fa-2x opacity-75"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="card-title mb-0">Avg. Order Value</h6>
-                            <h2 class="mb-0" id="avgOrderValue">₦0.00</h2>
-                        </div>
-                        <div class="icon">
-                            <i class="fas fa-calculator fa-2x opacity-75"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-3">
+        <div class="col-xl-6 col-md-6 mb-3">
             <div class="card bg-warning text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title mb-0">Top Product</h6>
+                            <h6 class="card-title mb-0">Top Selling Category</h6>
                             <h2 class="mb-0" id="topProduct">-</h2>
                         </div>
                         <div class="icon">
@@ -117,7 +87,7 @@
                     <i class="fas fa-receipt me-2"></i>Sales Receipts
                 </h5>
                 <div class="d-flex gap-2">
-                    <input type="text" class="form-control" id="receiptSearch" placeholder="Search receipts...">
+                    <input type="text" class="form-control" id="receiptSearch" placeholder="Search receipts by customer name">
                     <select class="form-select" id="receiptFilter" style="width: auto;">
                         <option value="all">All Receipts</option>
                         <option value="today">Today</option>
@@ -182,6 +152,24 @@
                 <button type="button" class="btn btn-primary" onclick="printReceiptFromModal()">
                     <i class="fas fa-print me-2"></i>Print Receipt
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="exportConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Export</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="exportConfirmText">Are you sure you want to export this data?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmExportBtn">Yes, Export</button>
             </div>
         </div>
     </div>
@@ -516,14 +504,10 @@
     }
 
     function updateAnalyticsCards(data) {
-        // Update analytics cards with real data
+        // Only update total sales and top product
         const salesTrend = data.sales_trend || [];
         const totalSales = salesTrend.reduce((sum, item) => sum + item.total, 0);
-        const totalOrders = salesTrend.reduce((sum, item) => sum + (item.total > 0 ? 1 : 0), 0);
-        const avgOrderValue = totalOrders ? (totalSales / totalOrders) : 0;
         document.getElementById('totalSales').textContent = '₦' + totalSales.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
-        document.getElementById('totalOrders').textContent = totalOrders;
-        document.getElementById('avgOrderValue').textContent = '₦' + avgOrderValue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
         // Top product (by category with highest total)
         const salesByCategory = data.sales_by_category || [];
         let topProduct = '-';
@@ -534,11 +518,14 @@
         document.getElementById('topProduct').textContent = topProduct;
     }
 
+    let allSalesData = [];
     async function loadReceipts() {
         try {
             const response = await fetch('/api/v1/sales/', { headers });
             if (!response.ok) throw new Error('Failed to fetch sales');
-            const sales = await response.json();
+            let sales = await response.json();
+            if (!Array.isArray(sales) && sales.results) sales = sales.results;
+            allSalesData = sales;
             renderReceiptsTable(sales);
         } catch (error) {
             console.error('Error loading receipts:', error);
@@ -639,13 +626,65 @@
         modal.show();
     }
 
-    function exportReport(type) {
-        let url = '';
-        if (type === 'sales') url = '/api/v1/export/sales/';
-        else if (type === 'inventory') url = '/api/v1/export/inventory/';
-        else return;
-        window.open(url, '_blank');
+    // Add event listeners for search and filter
+    const searchInput = document.getElementById('receiptSearch');
+    const filterSelect = document.getElementById('receiptFilter');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterAndRenderReceipts);
     }
+    if (filterSelect) {
+        filterSelect.addEventListener('change', filterAndRenderReceipts);
+    }
+    function filterAndRenderReceipts() {
+        let filtered = allSalesData;
+        const search = (searchInput ? searchInput.value.trim().toLowerCase() : '');
+        const filter = (filterSelect ? filterSelect.value : 'all');
+        // Filter by search
+        if (search) {
+            filtered = filtered.filter(sale => {
+                const customer = sale.customer_name ? sale.customer_name.toLowerCase() : '';
+                const items = (sale.items || []).map(i => i.item_name ? i.item_name.toLowerCase() : '').join(' ');
+                return customer.includes(search) || items.includes(search);
+            });
+        }
+        // Filter by date
+        const now = new Date();
+        filtered = filtered.filter(sale => {
+            if (!filter || filter === 'all') return true;
+            const saleDate = new Date(sale.created_at);
+            if (filter === 'today') {
+                return saleDate.toDateString() === now.toDateString();
+            } else if (filter === 'week') {
+                const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7);
+                return saleDate >= weekAgo && saleDate <= now;
+            } else if (filter === 'month') {
+                return saleDate.getMonth() === now.getMonth() && saleDate.getFullYear() === now.getFullYear();
+            } else if (filter === 'lastmonth') {
+                const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                return saleDate.getMonth() === lastMonth.getMonth() && saleDate.getFullYear() === lastMonth.getFullYear();
+            }
+            return true;
+        });
+        renderReceiptsTable(filtered);
+    }
+
+    let pendingExportType = null;
+    function exportReport(type) {
+        pendingExportType = type;
+        const modal = new bootstrap.Modal(document.getElementById('exportConfirmModal'));
+        document.getElementById('exportConfirmText').textContent =
+            type === 'sales' ? 'Are you sure you want to export all sales data?' :
+            type === 'inventory' ? 'Are you sure you want to export all inventory data?' :
+            'Are you sure you want to export this data?';
+        modal.show();
+    }
+    document.getElementById('confirmExportBtn').onclick = function() {
+        if (pendingExportType === 'sales') window.open('/api/v1/export/sales/', '_blank');
+        else if (pendingExportType === 'inventory') window.open('/api/v1/export/inventory/', '_blank');
+        pendingExportType = null;
+        const modal = bootstrap.Modal.getInstance(document.getElementById('exportConfirmModal'));
+        if (modal) modal.hide();
+    };
 
     function showToast(message, type = 'info') {
         const toast = document.createElement('div');
