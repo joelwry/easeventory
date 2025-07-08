@@ -77,7 +77,7 @@ def inventory_view(request):
                 'id': item.id,
                 'name': item.name,
                 'sku': item.sku,
-                'category': item.category.name if item.category else 'Uncategorized',
+                'category': item.category.name if item.category else None,
                 'category_id': item.category.id if item.category else None,
                 'size': item.size,
                 'price': float(item.price),
@@ -107,7 +107,8 @@ def inventory_view(request):
     context = {
         'page_title': 'Inventory Management',
         'page_subtitle': 'Manage your product inventory with ease',
-        'initial_data': initial_data
+        'initial_data': json.dumps(initial_data),
+        'csrf_token': request.COOKIES.get('csrftoken', '')
     }
     
     return render(request, 'pages/inventory.html', context)
@@ -255,7 +256,81 @@ def category_list(request):
         'categories_json': categories_json, # For initializing the state in client-side JavaScript.
     })
 
-
+@login_required(login_url="/login")
+def inventory_category_view(request, category_id):
+    """View for category-specific inventory management page"""
+    business_owner = request.user
+    
+    # Get the specific category
+    category = get_object_or_404(Category, id=category_id, business_owner=business_owner)
+    
+    # Get inventory items for this specific category
+    inventory_items = InventoryItem.objects.filter(
+        business_owner=business_owner,
+        category=category
+    ).select_related('category').order_by('-created_at')[:20]
+    
+    # Get all categories for the business owner (for dropdowns)
+    categories = Category.objects.filter(business_owner=business_owner)
+    
+    # Calculate stats for this category only
+    total_items = InventoryItem.objects.filter(business_owner=business_owner, category=category).count()
+    total_value = InventoryItem.objects.filter(business_owner=business_owner, category=category).aggregate(
+        total=Sum(F('price') * F('quantity'))
+    )['total'] or 0
+    low_stock_count = InventoryItem.objects.filter(
+        business_owner=business_owner,
+        category=category,
+        quantity__lte=F('min_stock')
+    ).count()
+    categories_count = categories.count()
+    
+    # Prepare initial data for the template
+    initial_data = {
+        'inventory_items': [
+            {
+                'id': item.id,
+                'name': item.name,
+                'sku': item.sku,
+                'category': item.category.name if item.category else None,
+                'category_id': item.category.id if item.category else None,
+                'size': item.size,
+                'price': float(item.price),
+                'quantity': item.quantity,
+                'min_stock': item.min_stock,
+                'status': item.status,
+                'created_at': item.created_at.isoformat()
+            }
+            for item in inventory_items
+        ],
+        'categories': [
+            {
+                'id': cat.id,
+                'name': cat.name,
+                'item_count': cat.items.count()
+            }
+            for cat in categories
+        ],
+        'stats': {
+            'total_items': total_items,
+            'total_value': float(total_value),
+            'low_stock_count': low_stock_count,
+            'categories_count': categories_count
+        },
+        'current_category': {
+            'id': category.id,
+            'name': category.name,
+            'item_count': category.items.count()
+        }
+    }
+    
+    context = {
+        'page_title': f'{category.name} - Inventory',
+        'page_subtitle': f'Manage your {category.name} products',
+        'initial_data': initial_data
+    }
+    
+    return render(request, 'pages/inventory_category.html', context)
 
 @login_required
 @require_POST

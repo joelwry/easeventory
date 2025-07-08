@@ -1,15 +1,15 @@
-// Inventory Management JavaScript
-class InventoryManager {
+// Category-Specific Inventory Management JavaScript
+class CategoryInventoryManager {
     constructor() {
         this.currentPage = 1;
         this.perPage = 20;
         this.totalPages = 1;
         this.filters = {
             search: '',
-            category: '',
             status: ''
         };
         this.initialData = window.initialData || {};
+        this.currentCategory = this.initialData.current_category;
         this.setupEventListeners();
         this.initializePage();
     }
@@ -18,24 +18,19 @@ class InventoryManager {
         // Search and filter events
         document.getElementById('searchInput')?.addEventListener('input', debounce(() => {
             this.filters.search = document.getElementById('searchInput').value;
-            this.currentPage = 1; // Reset to first page on filter change
-            this.loadInventoryItems();
+            this.applyFrontendFilters();
         }, 300));
-
-        document.getElementById('categoryFilter')?.addEventListener('change', () => {
-            this.filters.category = document.getElementById('categoryFilter').value;
-            this.currentPage = 1;
-            this.loadInventoryItems();
-        });
 
         document.getElementById('stockFilter')?.addEventListener('change', () => {
             this.filters.status = document.getElementById('stockFilter').value;
-            this.currentPage = 1;
-            this.loadInventoryItems();
+            this.applyFrontendFilters();
         });
 
         document.getElementById('clearFilters')?.addEventListener('click', () => {
-            this.clearFilters();
+            this.filters = { search: '', status: '' };
+            document.getElementById('searchInput').value = '';
+            document.getElementById('stockFilter').value = '';
+            this.applyFrontendFilters();
         });
 
         // Add item form
@@ -66,88 +61,32 @@ class InventoryManager {
     }
 
     initializePage() {
-        
-        // Check for category query parameter and set filter
-        const urlParams = new URLSearchParams(window.location.search);
-        const categoryId = urlParams.get('category');
-        if (categoryId) {
-            this.filters.category = categoryId;
-            const categoryFilter = document.getElementById('categoryFilter');
-            if (categoryFilter) categoryFilter.value = categoryId;
-        }
-
-        
-        //this.renderInventoryTable(this.initialData.inventory_items || []);
-        
-        
-        // Load items based on category filter
-        if (categoryId) {
-            this.loadInventoryItems();
-        } else {
-            this.renderInventoryTable(this.initialData.inventory_items || []);
-            // Populate initial data
+        // Store the full list for frontend filtering
+        this.fullItemList = (this.initialData.inventory_items || []).slice();
+        this.renderInventoryTable(this.fullItemList);
         this.updateStats(this.initialData.stats || {});
-        this.populateCategories(this.initialData.categories || []);
-         // set pagination
-       this.loadInventoryPagination();
-        }
-       
+        // No API call on page load
     }
 
-    // specifically for page pagination
-    async loadInventoryPagination() {
-        try {
-            const queryParams = new URLSearchParams({
-                page: this.currentPage,
-                per_page: this.perPage,
-                ...this.filters
-            });
-
-            const response = await fetch(`/api/v1/inventory/list/?${queryParams}`, {
-                headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
-                    'X-CSRFToken': this.getCsrfToken()
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to load inventory items');
-
-            const data = await response.json();
-            this.totalPages = data.total_pages;
-            this.updatePagination();
-           
-        } catch (error) {
-            console.error('Error updating pagination:', error);
-           
+    // Frontend filtering for search and status
+    applyFrontendFilters() {
+        let filtered = this.fullItemList;
+        if (this.filters.search) {
+            const searchLower = this.filters.search.toLowerCase();
+            filtered = filtered.filter(item => item.name.toLowerCase().includes(searchLower));
         }
-    }
-
-    async loadInventoryItems() {
-        try {
-            const queryParams = new URLSearchParams({
-                page: this.currentPage,
-                per_page: this.perPage,
-                ...this.filters
-            });
-
-            const response = await fetch(`/api/v1/inventory/list/?${queryParams}`, {
-                headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
-                    'X-CSRFToken': this.getCsrfToken()
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to load inventory items');
-
-            const data = await response.json();
-            this.totalPages = data.total_pages;
-            this.renderInventoryTable(data.items);
-            this.updatePagination();
-            this.updateStats(data.stats || {});
-        } catch (error) {
-            console.error('Error loading inventory items:', error);
-            this.showToast('Failed to load inventory items', 'error');
+        if (this.filters.status) {
+            if (this.filters.status === 'low-stock') {
+                filtered = filtered.filter(item => item.quantity <= item.min_stock);
+            } else if (this.filters.status === 'out-of-stock') {
+                filtered = filtered.filter(item => item.quantity === 0);
+            } else if (this.filters.status === 'in-stock') {
+                filtered = filtered.filter(item => item.quantity > item.min_stock);
+            }
         }
+        this.renderInventoryTable(filtered);
+        // Optionally update stats for filtered set (frontend only)
+        // this.updateStats(this.calculateStats(filtered));
     }
 
     renderInventoryTable(items) {
@@ -163,14 +102,10 @@ class InventoryManager {
                     <div class="d-flex align-items-center">
                         <div>
                             <h6 class="mb-0">${item.name}</h6>
-                           
                         </div>
                     </div>
                 </td>
                 <td><code>${item.sku}</code></td>
-                <td>
-                    <span class="badge bg-light text-dark">${item.category}</span>
-                </td>
                 <td>${item.size || '-'}</td>
                 <td>₦${parseFloat(item.price).toLocaleString()}</td>
                 <td>
@@ -196,7 +131,7 @@ class InventoryManager {
                             <i class="fas fa-plus-minus"></i>
                         </button>
                         <button class="btn btn-sm btn-outline-danger" 
-                                onclick="inventoryManager.deleteItem(${item.id})" 
+                                onclick="categoryInventoryManager.deleteItem(${item.id})" 
                                 title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -238,42 +173,6 @@ class InventoryManager {
         document.getElementById('totalValue').textContent = `₦${parseFloat(stats.total_value || 0).toLocaleString()}`;
         document.getElementById('lowStockCount').textContent = stats.low_stock_count || 0;
         document.getElementById('categoriesCount').textContent = stats.categories_count || 0;
-    }
-
-    populateCategories(categories) {
-        const categoryFilter = document.getElementById('categoryFilter');
-        const addItemCategory = document.getElementById('itemCategory');
-        const editItemCategory = document.getElementById('editItemCategory');
-        
-        if (!categoryFilter || !addItemCategory || !editItemCategory) return;
-
-        const options = categories.map(cat => 
-            `<option value="${cat.id}">${cat.name} (${cat.item_count})</option>`
-        ).join('');
-        
-        const defaultOption = '<option value="">All Categories</option>';
-        const selectOption = '<option value="">Select Category</option>';
-        
-        categoryFilter.innerHTML = defaultOption + options;
-        addItemCategory.innerHTML = selectOption + options;
-        editItemCategory.innerHTML = selectOption + options;
-    }
-
-    async refreshCategories() {
-        try {
-            const response = await fetch('/api/v1/category/list-count/', {
-                headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
-                    'X-CSRFToken': this.getCsrfToken()
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to load categories');
-            const categories = await response.json();
-            this.populateCategories(categories);
-        } catch (error) {
-            console.error('Error refreshing categories:', error);
-        }
     }
 
     updatePagination() {
@@ -322,7 +221,7 @@ class InventoryManager {
         const formData = new FormData(form);
         const data = {
             name: formData.get('itemName'),
-            category: formData.get('itemCategory'),
+            category: this.currentCategory.id, // Always use current category
             size: formData.get('itemSize'),
             price: parseFloat(formData.get('itemPrice')),
             quantity: parseInt(formData.get('itemQuantity')),
@@ -344,35 +243,16 @@ class InventoryManager {
             if (!response.ok) throw new Error('Failed to add item');
 
             const result = await response.json();
-            this.showToast('Item added successfully', 'success');
+            this.showToast(`${this.currentCategory.name} item added successfully`, 'success');
             bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
             form.reset();
-            await this.loadInventoryItems();
-            await this.refreshStats();
-            await this.refreshCategories();
+            // Reset category field to current category
+            document.getElementById('itemCategory').value = this.currentCategory.name;
+            document.getElementById('itemCategoryId').value = this.currentCategory.id;
+            await this.refreshFromBackend();
         } catch (error) {
             console.error('Error adding item:', error);
             this.showToast('Failed to add item', 'error');
-        }
-    }
-
-    async editItem(itemId) {
-        try {
-            const response = await fetch(`/api/v1/inventory/${itemId}/update/`, {
-                headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
-                    'X-CSRFToken': this.getCsrfToken()
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to load item details');
-
-            const item = await response.json();
-            this.populateEditForm(item);
-            new bootstrap.Modal(document.getElementById('editItemModal')).show();
-        } catch (error) {
-            console.error('Error loading item details:', error);
-            this.showToast('Failed to load item details', 'error');
         }
     }
 
@@ -381,7 +261,8 @@ class InventoryManager {
         if (!form) return;
 
         form.querySelector('#editItemName').value = item.name;
-        form.querySelector('#editItemCategory').value = item.category;
+        form.querySelector('#editItemCategory').value = this.currentCategory.name;
+        form.querySelector('#editItemCategoryId').value = this.currentCategory.id;
         form.querySelector('#editItemSize').value = item.size || '';
         form.querySelector('#editItemPrice').value = item.price;
         form.querySelector('#editItemQuantity').value = item.quantity;
@@ -397,7 +278,7 @@ class InventoryManager {
         const formData = new FormData(form);
         const data = {
             name: formData.get('itemName'),
-            category: formData.get('itemCategory'),
+            category: this.currentCategory.id, // Always use current category
             size: formData.get('itemSize'),
             price: parseFloat(formData.get('itemPrice')),
             quantity: parseInt(formData.get('itemQuantity')),
@@ -419,13 +300,9 @@ class InventoryManager {
             if (!response.ok) throw new Error('Failed to update item');
 
             const result = await response.json();
-            this.showToast('Item updated successfully', 'success');
+            this.showToast(`${this.currentCategory.name} item updated successfully`, 'success');
             bootstrap.Modal.getInstance(document.getElementById('editItemModal')).hide();
-            await Promise.all([
-                this.loadInventoryItems(),
-                this.refreshStats(),
-               
-            ]);
+            await this.refreshFromBackend();
         } catch (error) {
             console.error('Error updating item:', error);
             this.showToast('Failed to update item', 'error');
@@ -457,11 +334,7 @@ class InventoryManager {
             this.showToast('Stock adjusted successfully', 'success');
             bootstrap.Modal.getInstance(document.getElementById('adjustStockModal')).hide();
             form.reset();
-            await Promise.all([
-                this.loadInventoryItems(),
-                this.refreshStats(),
-                
-            ]);
+            await this.refreshFromBackend();
         } catch (error) {
             console.error('Error adjusting stock:', error);
             this.showToast('Failed to adjust stock', 'error');
@@ -469,7 +342,7 @@ class InventoryManager {
     }
 
     async deleteItem(itemId) {
-        if (!confirm('Are you sure you want to delete this item?')) return;
+        if (!confirm(`Are you sure you want to delete this ${this.currentCategory.name} item?`)) return;
 
         try {
             const response = await fetch(`/api/v1/inventory/${itemId}/delete/`, {
@@ -482,81 +355,19 @@ class InventoryManager {
 
             if (!response.ok) throw new Error('Failed to delete item');
 
-            this.showToast('Item deleted successfully', 'success');
-            await Promise.all([
-                this.loadInventoryItems(),
-                this.refreshStats(),
-                this.refreshCategories()
-            ]);
+            this.showToast(`${this.currentCategory.name} item deleted successfully`, 'success');
+            await this.refreshFromBackend();
         } catch (error) {
             console.error('Error deleting item:', error);
             this.showToast('Failed to delete item', 'error');
         }
     }
 
-    async adjustStock(itemId) {
-        try {
-            const response = await fetch(`/api/v1/inventory/${itemId}/update/`, {
-                headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
-                    'X-CSRFToken': this.getCsrfToken()
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to load item details');
-
-            const item = await response.json();
-            document.getElementById('adjustStockItemName').textContent = item.name;
-            document.getElementById('adjustStockCurrentQuantity').textContent = item.quantity;
-            document.getElementById('adjustStockForm').dataset.itemId = itemId;
-            new bootstrap.Modal(document.getElementById('adjustStockModal')).show();
-        } catch (error) {
-            console.error('Error loading item details:', error);
-            this.showToast('Failed to load item details', 'error');
-        }
-    }
-
-    async loadStats() {
-        try {
-            const response = await fetch('/api/v1/inventory/stats/', {
-                headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
-                    'X-CSRFToken': this.getCsrfToken()
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to load stats');
-            const stats = await response.json();
-            this.updateStats(stats);
-        } catch (error) {
-            console.error('Error loading stats:', error);
-        }
-    }
-
-    async refreshStats() {
-        try {
-            const response = await fetch('/api/v1/inventory/stats/', {
-                headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
-                    'X-CSRFToken': this.getCsrfToken()
-                }
-            });
-
-            if (!response.ok) throw new Error('Failed to load stats');
-            const stats = await response.json();
-            this.updateStats(stats);
-        } catch (error) {
-            console.error('Error refreshing stats:', error);
-        }
-    }
-
     clearFilters() {
         document.getElementById('searchInput').value = '';
-        document.getElementById('categoryFilter').value = '';
         document.getElementById('stockFilter').value = '';
         this.filters = {
             search: '',
-            category: '',
             status: ''
         };
         this.currentPage = 1;
@@ -603,6 +414,26 @@ class InventoryManager {
         document.body.appendChild(container);
         return container;
     }
+
+    // After add/edit/delete/adjust, refresh from backend
+    async refreshFromBackend() {
+        try {
+            const response = await fetch(`/api/v1/inventory/category/${this.currentCategory.id}/list/`, {
+                headers: {
+                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'X-CSRFToken': this.getCsrfToken()
+                }
+            });
+            if (!response.ok) throw new Error('Failed to load inventory items');
+            const data = await response.json();
+            this.fullItemList = data.items;
+            this.renderInventoryTable(this.fullItemList);
+            this.updateStats(data.stats || {});
+        } catch (error) {
+            console.error('Error refreshing inventory:', error);
+            this.showToast('Failed to refresh inventory', 'error');
+        }
+    }
 }
 
 // Utility function for debouncing
@@ -618,7 +449,7 @@ function debounce(func, wait) {
     };
 }
 
-// Initialize inventory manager when DOM is loaded
+// Initialize category inventory manager when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.inventoryManager = new InventoryManager();
+    window.categoryInventoryManager = new CategoryInventoryManager();
 }); 

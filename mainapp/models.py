@@ -106,7 +106,7 @@ class InventoryItem(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} ({self.sku})"
+        return f"{self.name} ({self.sku} => {self.business_owner.username})"
 
     def save(self, *args, **kwargs):
         """Override save to automatically generate SKU and update status"""

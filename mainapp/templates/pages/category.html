@@ -79,7 +79,7 @@
                                 <span class="item-count">{{ category.item_count }}</span> items
                             </small>
                         </div>
-                        <a href="/inventory/?category={{ category.id }}" class="btn btn-sm btn-outline-primary">
+                        <a href="/inventory/category/{{ category.id }}/" class="btn btn-sm btn-outline-primary">
                             View Items
                         </a>
                     </div>
@@ -359,8 +359,13 @@
                 throw new Error(errorData.name?.[0] || 'Failed to add category');
             }
             
-            const newCategory = await response.json();
-            categories.unshift(newCategory); // Add to the beginning of the array
+            // After adding, fetch updated categories with counts
+            const categoriesResponse = await fetch(`${API_BASE_URL}/category/list-count/`, {
+                headers: getApiHeaders()
+            });
+            if (!categoriesResponse.ok) throw new Error('Failed to refresh categories');
+            categories = await categoriesResponse.json();
+            
             renderCategories(categories);
             
             form.reset();
@@ -412,11 +417,13 @@
                 throw new Error(errorData.name?.[0] || 'Failed to update category');
             }
             
-            const updatedCategory = await response.json();
-            const index = categories.findIndex(c => c.id === updatedCategory.id);
-            if (index !== -1) {
-                categories[index] = updatedCategory;
-            }
+            // After updating, fetch updated categories with counts
+            const categoriesResponse = await fetch(`${API_BASE_URL}/category/list-count/`, {
+                headers: getApiHeaders()
+            });
+            if (!categoriesResponse.ok) throw new Error('Failed to refresh categories');
+            categories = await categoriesResponse.json();
+            
             renderCategories(categories);
             
             closeModal('editCategoryModal');
@@ -459,11 +466,17 @@
                 headers: getApiHeaders()
             });
             
-            if (response.status !== 204) { // 204 No Content is the success status for DELETE
+            if (response.status !== 204) {
                 throw new Error('Failed to delete category');
             }
             
-            categories = categories.filter(c => c.id !== categoryId);
+            // After deleting, fetch updated categories with counts
+            const categoriesResponse = await fetch(`${API_BASE_URL}/category/list-count/`, {
+                headers: getApiHeaders()
+            });
+            if (!categoriesResponse.ok) throw new Error('Failed to refresh categories');
+            categories = await categoriesResponse.json();
+            
             renderCategories(categories);
 
             closeModal('deleteCategoryModal');

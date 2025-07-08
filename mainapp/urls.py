@@ -5,11 +5,11 @@ from django.contrib.auth.views import LogoutView
 urlpatterns = [ 
     path('dashboard/', views.dashboard, name='dashboard'),
     path('inventory/', views.inventory_view, name='inventory'),
+    path('inventory/category/<int:category_id>/', views.inventory_category_view, name='inventory_category'),
     path('sales/', views.sales, name='sales'),
     path('reports/', views.reports, name='reports'),
     path('subscription/', views.subscription, name='subscription'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    path('landing/', views.landing, name='landing'),
     path('signup/<str:token>/', views.signup, name='signup'),
     path('login/', views.login, name='login'),
     path('customers/', views.customer_list, name='customer_list'),
@@ -20,4 +20,6 @@ urlpatterns = [
     path('categories/add/', views.add_category, name='add_category'),
     path('categories/<int:category_id>/edit/', views.edit_category, name='edit_category'),
     path('categories/<int:category_id>/delete/', views.delete_category, name='delete_category'),
+    path('', views.landing, name='landing'),
+
 ]

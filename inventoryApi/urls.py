@@ -12,7 +12,7 @@ from django.contrib.auth.views import LogoutView
 
 router = DefaultRouter()
 
-router.register(r'customers', views.CustomerViewSet, basename='customer')
+#router.register(r'customers', views.CustomerViewSet, basename='customer')
 router.register(r'categories', views.CategoryViewSet, basename='category')
 router.register(r'sales', views.SaleViewSet, basename='sale')
 
@@ -26,6 +26,7 @@ urlpatterns = [
     path('inventory/<int:item_id>/delete/', delete_inventory_item, name='inventory-delete'),
     path('inventory/<int:item_id>/adjust-stock/', adjust_stock, name='inventory-adjust-stock'),
     path('inventory/stats/', inventory_stats, name='inventory-stats'),
+    path('inventory/category/<int:category_id>/list/', views.category_inventory_list_api, name='category-inventory-list'),
     path('customers/list/', customer_list_api, name='customer-list'),
     path('customers/<int:customer_id>/', customer_detail_api, name='customer-detail'),
     path('category/list-count/', category_list_count, name='category-list-count'),

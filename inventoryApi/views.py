@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 @authentication_classes([TokenAuthentication])
 @permission_classes([AllowAny])  # GET is public; POST checks request.user below
 def inventory_list_api(request):
-    """API endpoint for listing inventory items with pagination and filtering"""
+    """API endpoint for listing inventory items with pagination and filtering, and returning filtered stats"""
     business_owner = request.user
     page = int(request.GET.get('page', 1))
     per_page = int(request.GET.get('per_page', 20))
@@ -63,13 +63,22 @@ def inventory_list_api(request):
     
     # Serialize data
     serializer = InventoryItemSerializer(items, many=True)
+
+    # Filtered stats
+    stats = {
+        'total_items': queryset.count(),
+        'total_value': float(queryset.aggregate(total=Sum(F('price') * F('quantity')))['total'] or 0),
+        'low_stock_count': queryset.filter(quantity__lte=F('min_stock')).count(),
+        'categories_count': queryset.values('category').distinct().count()
+    }
     
     return Response({
         'items': serializer.data,
         'total_count': total_count,
         'page': page,
         'per_page': per_page,
-        'total_pages': (total_count + per_page - 1) // per_page
+        'total_pages': (total_count + per_page - 1) // per_page,
+        'stats': stats
     })
 
 @api_view(['POST'])
@@ -271,41 +280,83 @@ def category_list_count(request):
         ]
     print(category_formatted)
     return Response(category_formatted)
-'''
-@api_view(['GET', 'POST'])
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def category_inventory_stats(request, category_id):
+    """API endpoint for getting inventory statistics for a specific category"""
+    business_owner = request.user
+    category = get_object_or_404(Category, id=category_id, business_owner=business_owner)
+
+    stats = {
+        'total_items': InventoryItem.objects.filter(business_owner=business_owner, category=category).count(),
+        'total_value': float(InventoryItem.objects.filter(business_owner=business_owner, category=category).aggregate(
+            total=Sum(F('price') * F('quantity'))
+        )['total'] or 0),
+        'low_stock_count': InventoryItem.objects.filter(
+            business_owner=business_owner,
+            category=category,
+            quantity__lte=F('min_stock')
+        ).count(),
+        'categories_count': 1  # Only this category
+    }
+    return Response(stats)
+
+@api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-def category_list_api(request):
-    if request.method == 'GET':
-        categories = Category.objects.filter(business_owner=request.user)
-        serializer = CategorySerializer(categories, many=True)
-        return Response(serializer.data)
-    
-    elif request.method == 'POST':
-        serializer = CategorySerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(business_owner=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+def category_inventory_list_api(request, category_id):
+    """API endpoint for listing inventory items for a specific category with pagination and stats"""
+    business_owner = request.user
+    page = int(request.GET.get('page', 1))
+    per_page = int(request.GET.get('per_page', 20))
+    search = request.GET.get('search', '')
+    stock_status = request.GET.get('status')
 
-@api_view(['PUT', 'DELETE'])
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])
-def category_detail_api(request, category_id):
-    category = get_object_or_404(Category, id=category_id, business_owner=request.user)
-    
-    if request.method == 'PUT':
-        serializer = CategorySerializer(category, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    elif request.method == 'DELETE':
-        category.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    # Get the category
+    category = get_object_or_404(Category, id=category_id, business_owner=business_owner)
 
-        '''
+    # Base queryset
+    queryset = InventoryItem.objects.filter(business_owner=business_owner, category=category)
+
+    # Apply filters
+    if search:
+        queryset = queryset.filter(name__icontains=search)
+    if stock_status:
+        if stock_status == 'low-stock':
+            queryset = queryset.filter(quantity__lte=F('min_stock'))
+        elif stock_status == 'out-of-stock':
+            queryset = queryset.filter(quantity=0)
+        elif stock_status == 'in-stock':
+            queryset = queryset.filter(quantity__gt=F('min_stock'))
+
+    # Calculate total count before pagination
+    total_count = queryset.count()
+
+    # Apply pagination
+    start = (page - 1) * per_page
+    end = start + per_page
+    items = queryset.select_related('category')[start:end]
+
+    # Serialize data
+    serializer = InventoryItemSerializer(items, many=True)
+
+    # Category-specific stats (filtered)
+    stats = {
+        'total_items': queryset.count(),
+        'total_value': float(queryset.aggregate(total=Sum(F('price') * F('quantity')))['total'] or 0),
+        'low_stock_count': queryset.filter(quantity__lte=F('min_stock')).count(),
+        'categories_count': 1
+    }
+
+    return Response({
+        'items': serializer.data,
+        'total_count': total_count,
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (total_count + per_page - 1) // per_page,
+        'stats': stats
+    })
 
 # ✅ Business Owner Account setup page : Good 2go
 @api_view(['POST'])
