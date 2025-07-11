@@ -18,6 +18,7 @@ from mainapp.models import Category
 from datetime import timedelta
 from django.utils import timezone
 import csv
+from mainapp.utils import active_subscription_required
 
 import logging
 
@@ -86,6 +87,7 @@ def inventory_list_api(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def add_inventory_item(request):
     """API endpoint for adding a new inventory item"""
     business_owner = request.user
@@ -100,6 +102,7 @@ def add_inventory_item(request):
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def update_inventory_item(request, item_id):
     """API endpoint for updating an inventory item"""
     business_owner = request.user
@@ -113,6 +116,7 @@ def update_inventory_item(request, item_id):
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def delete_inventory_item(request, item_id):
     """API endpoint for deleting an inventory item"""
     business_owner = request.user
@@ -123,6 +127,7 @@ def delete_inventory_item(request, item_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def adjust_stock(request, item_id):
     """API endpoint for adjusting stock quantity"""
     business_owner = request.user
@@ -150,6 +155,7 @@ def adjust_stock(request, item_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def inventory_stats(request):
     """API endpoint for getting inventory statistics"""
     business_owner = request.user
@@ -191,6 +197,10 @@ class SaleViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(business_owner=self.request.user)
+
+    def dispatch(self, request, *args, **kwargs):
+        # Apply subscription check to all methods
+        return active_subscription_required(super().dispatch)(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
         data = request.data
@@ -264,9 +274,14 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(business_owner=self.request.user)
 
+    def dispatch(self, request, *args, **kwargs):
+        # Apply subscription check to all methods
+        return active_subscription_required(super().dispatch)(request, *args, **kwargs)
+
 @api_view(['GET', 'POST'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def customer_list_api(request):
     if request.method == 'GET':
         customers = Customer.objects.filter(business_owner=request.user)
@@ -283,6 +298,7 @@ def customer_list_api(request):
 @api_view(['PUT', 'DELETE'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def customer_detail_api(request, customer_id):
     customer = get_object_or_404(Customer, id=customer_id, business_owner=request.user)
     
@@ -309,9 +325,14 @@ class CategoryViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(business_owner=self.request.user)
 
+    def dispatch(self, request, *args, **kwargs):
+        # Apply subscription check to all methods
+        return active_subscription_required(super().dispatch)(request, *args, **kwargs)
+
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def category_list_count(request):
     categories = Category.objects.filter(business_owner=request.user)
     category_formatted =  [
@@ -327,6 +348,7 @@ def category_list_count(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def category_inventory_stats(request, category_id):
     """API endpoint for getting inventory statistics for a specific category"""
     business_owner = request.user
@@ -349,6 +371,7 @@ def category_inventory_stats(request, category_id):
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def category_inventory_list_api(request, category_id):
     """API endpoint for listing inventory items for a specific category with pagination and stats"""
     business_owner = request.user
@@ -430,6 +453,9 @@ def signup_api(request):
         )
     
     try:
+        # Get the signup token to access duration_days
+        signup_token = SignupToken.objects.get(token=token)
+        
         # Create business owner directly
         business_owner = BusinessOwner.objects.create_user(
             username=email,  # Use email as username
@@ -440,8 +466,23 @@ def signup_api(request):
             address=address
         )
         
-        # Mark token as used
-        signup_token = SignupToken.objects.get(token=token)
+        # Set subscription based on token duration
+        if signup_token.duration_days and signup_token.duration_days >= 30:
+            # If duration is at least 30 days, activate subscription
+            business_owner.subscription_status = 'active'
+            business_owner.subscription_start_date = timezone.now()
+            business_owner.subscription_end_date = timezone.now() + timezone.timedelta(days=signup_token.duration_days)
+        else:
+            # If duration is less than 30 days or not set, set to pending
+            business_owner.subscription_status = 'pending'
+            business_owner.subscription_start_date = None
+            business_owner.subscription_end_date = None
+        
+        # Generate subscription token
+        business_owner.generate_subscription_token()
+        business_owner.save()
+        
+        # Mark signup token as used
         signup_token.is_used = True
         signup_token.save()
         
@@ -454,7 +495,9 @@ def signup_api(request):
             'business_owner': {
                 'business_name': business_owner.business_name,
                 'phone_number': business_owner.phone_number,
-                'address': business_owner.address
+                'address': business_owner.address,
+                'subscription_status': business_owner.subscription_status,
+                'subscription_end_date': business_owner.subscription_end_date.isoformat() if business_owner.subscription_end_date else None
             }
         }, status=status.HTTP_201_CREATED)
         
@@ -510,6 +553,7 @@ def login_api(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def analytics_data(request):
     business_owner = request.user
     # Sales trend (last 6 months)
@@ -530,6 +574,7 @@ def analytics_data(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def export_sales_csv(request):
     business_owner = request.user
     sales = Sale.objects.filter(business_owner=business_owner).order_by('-created_at')
@@ -544,6 +589,7 @@ def export_sales_csv(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@active_subscription_required
 def export_inventory_csv(request):
     business_owner = request.user
     inventory = InventoryItem.objects.filter(business_owner=business_owner).order_by('name')

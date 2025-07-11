@@ -9,6 +9,7 @@ urlpatterns = [
     path('sales/', views.sales, name='sales'),
     path('reports/', views.reports, name='reports'),
     path('subscription/', views.subscription, name='subscription'),
+    path('payment/success/', views.payment_success, name='payment_success'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/<str:token>/', views.signup, name='signup'),
     path('login/', views.login, name='login'),
@@ -20,6 +21,6 @@ urlpatterns = [
     path('categories/add/', views.add_category, name='add_category'),
     path('categories/<int:category_id>/edit/', views.edit_category, name='edit_category'),
     path('categories/<int:category_id>/delete/', views.delete_category, name='delete_category'),
+    path('subscription-expired/', views.subscription_expired, name='subscription_expired'),
     path('', views.landing, name='landing'),
-
 ]

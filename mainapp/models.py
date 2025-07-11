@@ -194,17 +194,22 @@ class SignupToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_used = models.BooleanField(default=False)
+    duration_days = models.PositiveIntegerField(null=True, blank=True, help_text="Subscription duration in days (optional)")
     
     def save(self, *args, **kwargs):
         if not self.token:
             # Generate a unique token using email, timestamp, and a secret key
+            import time, hashlib
+            from django.utils import timezone
             timestamp = str(int(time.time()))
             secret_key = "EazyInventory2024"  # This should be in settings.py in production
             raw_token = f"{self.email}{timestamp}{secret_key}"
             self.token = hashlib.sha256(raw_token.encode()).hexdigest()
-            
-            # Set expiration to 7 days from creation
-            self.expires_at = timezone.now() + timezone.timedelta(days=7)
+            # Set expiration to duration_days or 7 days from creation
+            if self.duration_days:
+                self.expires_at = timezone.now() + timezone.timedelta(days=self.duration_days)
+            else:
+                self.expires_at = timezone.now() + timezone.timedelta(days=7)
         super().save(*args, **kwargs)
     
     @property

@@ -1,0 +1,8 @@
+{% extends "pages/base.html" %}
+{% block content %}
+  <div class="alert alert-warning" style="margin: 2em auto; max-width: 600px;">
+    <h2>Subscription Expired or Blocked</h2>
+    <p>Your subscription has expired or your account has been blocked. Please contact support or renew your subscription to regain access to your inventory and dashboard.</p>
+    <a href="{% url 'subscription' %}" class="btn btn-primary">Renew Subscription</a>
+  </div>
+{% endblock %} 

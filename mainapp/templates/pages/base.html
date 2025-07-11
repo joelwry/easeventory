@@ -442,6 +442,14 @@
                     <span>Subscription</span>
                 </a>
             </div>
+
+            <div class="nav-item">
+                <a href="/logout/" class="nav-link {% if request.resolver_match.url_name == 'logout' %}active{% endif %}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+
         </div>
     </nav>
 

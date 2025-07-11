@@ -11,6 +11,7 @@ from django.views.decorators.http import require_POST
 from django.db.models import Sum, Count, F
 from django.utils import timezone
 from datetime import timedelta
+from .utils import active_subscription_required
 
 
 # views for just only serving login and signup page 
@@ -36,17 +37,25 @@ def signup(request, token):
         'token': token   # Pass token to template for API calls
     })
 
-# ✅ Inventory view with staff-only delete
+# ✅ Payment success handler
 @login_required
 def payment_success(request):
-    request.user.has_paid = True
-    request.user.save()
-    return redirect('inventory_dashboard')
+    business_owner = request.user
+    plan_type = request.GET.get('plan', 'yearly')
+    
+    # Activate subscription based on plan type
+    if plan_type == 'monthly':
+        business_owner.activate_subscription(duration_days=30)
+    else:
+        business_owner.activate_subscription(duration_days=365)
+    
+    return redirect('subscription')
 
 def payment_required(request):
     return render(request, 'payment_required.html')
 
 @login_required(login_url="/login")
+@active_subscription_required
 def inventory_view(request):
     """View for the inventory management page"""
     business_owner = request.user
@@ -114,6 +123,7 @@ def inventory_view(request):
     return render(request, 'pages/inventory.html', context)
 
 @login_required(login_url="/login")
+@active_subscription_required
 def dashboard(request):
     business_owner = request.user
     # Total products
@@ -139,6 +149,7 @@ def dashboard(request):
     return render(request, 'pages/dashboard.html', context)
 
 @login_required(login_url="/login")
+@active_subscription_required
 def sales(request):
     business_owner = request.user
     today = timezone.now().date()
@@ -163,6 +174,7 @@ def sales(request):
     return render(request, 'pages/sales.html', context)
 
 @login_required(login_url="/login")
+@active_subscription_required
 def reports(request):
     business_owner = request.user
     # Total sales
@@ -200,29 +212,44 @@ def reports(request):
 def subscription(request):
     business_owner = request.user
     
+    # Determine subscription status based on actual model fields
+    is_active = business_owner.is_subscription_active
+    plan_type = 'Premium' if is_active else 'Free'
+    
+    # Calculate days remaining
+    days_remaining = None
+    if business_owner.subscription_end_date:
+        from datetime import datetime
+        now = timezone.now()
+        if business_owner.subscription_end_date > now:
+            days_remaining = (business_owner.subscription_end_date - now).days
+    
     context = {
         'page_title': 'Subscription Management',
         'page_subtitle': 'Manage your subscription plan',
         'subscription_status': {
-            'is_active': business_owner.has_paid,
-            'plan_type': 'Premium' if business_owner.has_paid else 'Free',
-            'expiry_date': None,  # Add if you implement subscription expiry
+            'is_active': is_active,
+            'plan_type': plan_type,
+            'status': business_owner.subscription_status,
+            'start_date': business_owner.subscription_start_date,
+            'end_date': business_owner.subscription_end_date,
+            'days_remaining': days_remaining,
             'features': {
                 'inventory_management': True,
                 'customer_management': True,
-                'sales_tracking': business_owner.has_paid,
-                'advanced_reports': business_owner.has_paid,
-                'multiple_users': business_owner.has_paid
+                'sales_tracking': is_active,
+                'advanced_reports': is_active,
+                'multiple_users': is_active
             }
         }
     }
     return render(request, 'pages/subscription.html', context)
 
 def landing(request):
-    # Render the landing page with signup form
     return render(request, 'landing.html')
 
 @login_required(login_url="/login")
+@active_subscription_required
 def customer_list(request):
     """View for listing and managing customers"""
     return render(request, 'pages/customer.html', {
@@ -232,6 +259,7 @@ def customer_list(request):
 
 # good to go
 @login_required(login_url="/login")
+@active_subscription_required
 def category_list(request):
     """View for listing and managing categories."""
     business_owner = request.user
@@ -257,6 +285,7 @@ def category_list(request):
     })
 
 @login_required(login_url="/login")
+@active_subscription_required
 def inventory_category_view(request, category_id):
     """View for category-specific inventory management page"""
     business_owner = request.user
@@ -333,6 +362,7 @@ def inventory_category_view(request, category_id):
     return render(request, 'pages/inventory_category.html', context)
 
 @login_required
+@active_subscription_required
 @require_POST
 def add_customer(request):
     """View for adding a new customer"""
@@ -361,6 +391,7 @@ def add_customer(request):
         }, status=400)
 
 @login_required
+@active_subscription_required
 @require_POST
 def edit_customer(request, customer_id):
     """View for editing an existing customer"""
@@ -382,6 +413,7 @@ def edit_customer(request, customer_id):
         }, status=400)
 
 @login_required
+@active_subscription_required
 @require_POST
 def delete_customer(request, customer_id):
     """View for deleting a customer"""
@@ -400,6 +432,7 @@ def delete_customer(request, customer_id):
 
 
 @login_required
+@active_subscription_required
 @require_POST
 def add_category(request):
     """View for adding a new category"""
@@ -423,6 +456,7 @@ def add_category(request):
         }, status=400)
 
 @login_required
+@active_subscription_required
 @require_POST
 def edit_category(request, category_id):
     """View for editing an existing category"""
@@ -441,6 +475,7 @@ def edit_category(request, category_id):
         }, status=400)
 
 @login_required
+@active_subscription_required
 @require_POST
 def delete_category(request, category_id):
     """View for deleting a category"""
@@ -456,3 +491,7 @@ def delete_category(request, category_id):
             'status': 'error',
             'message': str(e)
         }, status=400)
+
+@login_required
+def subscription_expired(request):
+    return render(request, 'pages/subscription_expired.html')
