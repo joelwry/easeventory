@@ -14,7 +14,7 @@ from datetime import timedelta
 from .utils import active_subscription_required
 
 
-# views for just only serving login and signup page 
+# views for just only serving login 
 def login(request):
     """View for handling login"""
     return render(request, 'login.html', {
@@ -22,6 +22,7 @@ def login(request):
         'page_subtitle': 'Access your business account'
     })
 
+# views for just only serving signup page with token required
 def signup(request, token):
     """View for handling signup with token validation"""
     # Validate token
@@ -246,7 +247,20 @@ def subscription(request):
     return render(request, 'pages/subscription.html', context)
 
 def landing(request):
-    return render(request, 'landing.html')
+    from django.conf import settings
+    
+    # Convert amounts from kobo to naira for display
+    monthly_amount = settings.MONTHLY_SUBSCRIPTION_AMOUNT / 100
+    yearly_amount = settings.YEARLY_SUBSCRIPTION_AMOUNT / 100
+    
+    context = {
+        'monthly_amount': monthly_amount,
+        'yearly_amount': yearly_amount,
+        'paystack_public_key': settings.PAYSTACK_PUBLIC_KEY,
+        'paystack_plans': settings.PAYSTACK_PLANS,
+    }
+    
+    return render(request, 'landing.html', context)
 
 @login_required(login_url="/login")
 @active_subscription_required
@@ -361,137 +375,21 @@ def inventory_category_view(request, category_id):
     
     return render(request, 'pages/inventory_category.html', context)
 
-@login_required
-@active_subscription_required
-@require_POST
-def add_customer(request):
-    """View for adding a new customer"""
-    try:
-        customer = Customer.objects.create(
-            business_owner=request.user,
-            first_name=request.POST.get('first_name'),
-            last_name=request.POST.get('last_name'),
-            email=request.POST.get('email'),
-            phone=request.POST.get('phone')
-        )
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Customer added successfully',
-            'customer': {
-                'id': customer.id,
-                'name': f"{customer.first_name} {customer.last_name}",
-                'email': customer.email,
-                'phone': customer.phone
-            }
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
-
-@login_required
-@active_subscription_required
-@require_POST
-def edit_customer(request, customer_id):
-    """View for editing an existing customer"""
-    customer = get_object_or_404(Customer, id=customer_id, business_owner=request.user)
-    try:
-        customer.first_name = request.POST.get('first_name')
-        customer.last_name = request.POST.get('last_name')
-        customer.email = request.POST.get('email')
-        customer.phone = request.POST.get('phone')
-        customer.save()
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Customer updated successfully'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
-
-@login_required
-@active_subscription_required
-@require_POST
-def delete_customer(request, customer_id):
-    """View for deleting a customer"""
-    customer = get_object_or_404(Customer, id=customer_id, business_owner=request.user)
-    try:
-        customer.delete()
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Customer deleted successfully'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
-
-
-@login_required
-@active_subscription_required
-@require_POST
-def add_category(request):
-    """View for adding a new category"""
-    try:
-        category = Category.objects.create(
-            business_owner=request.user,
-            name=request.POST.get('name')
-        )
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Category added successfully',
-            'category': {
-                'id': category.id,
-                'name': category.name
-            }
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
-
-@login_required
-@active_subscription_required
-@require_POST
-def edit_category(request, category_id):
-    """View for editing an existing category"""
-    category = get_object_or_404(Category, id=category_id, business_owner=request.user)
-    try:
-        category.name = request.POST.get('name')
-        category.save()
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Category updated successfully'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
-
-@login_required
-@active_subscription_required
-@require_POST
-def delete_category(request, category_id):
-    """View for deleting a category"""
-    category = get_object_or_404(Category, id=category_id, business_owner=request.user)
-    try:
-        category.delete()
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Category deleted successfully'
-        })
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
 
 @login_required
 def subscription_expired(request):
     return render(request, 'pages/subscription_expired.html')
+
+# for payment successfull unauthenticated
+def payment_success_page(request,paymentId):
+    return render(request, 'payment_success_unauth.html')
+
+def unathenticated_payment_verify_page(request):
+    return render(request,"unathenticated_payment_verify.html")
+
+def renewal_subscription_success_page(request):
+    """
+    Renders the subscription renewal success page.
+    This page informs the user that their subscription has been renewed.
+    """
+    return render(request, 'pages/renewal_subscription_success.html')

@@ -1,0 +1,30 @@
+Welcome to EasyBook!
+
+Hello!
+
+Thank you for choosing EasyBook for your inventory management needs. Your payment has been confirmed and we're excited to have you on board!
+
+Your Subscription Plan:
+- Plan Type: {{ plan_type }}
+{% if duration_days %}- Duration: {{ duration_days }} days{% endif %}
+
+To complete your registration and access your EasyBook dashboard, please visit the following link:
+
+{{ signup_url }}
+
+Important: This link will expire in 7 days for security reasons. If you need a new link, please contact our support team.
+
+What's Next?
+1. Click the registration link above
+2. Fill in your business details
+3. Create your account password
+4. Start managing your inventory!
+
+Need Help?
+If you have any questions or need assistance, please don't hesitate to contact our support team:
+- Email: support@easybook.com.ng
+- Phone: +234 9032924589
+
+---
+© 2025 EasyBook Inventory Management. All rights reserved.
+This email was sent to {{ email }}. If you didn't request this, please ignore this email. 

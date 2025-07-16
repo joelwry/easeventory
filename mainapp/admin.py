@@ -3,7 +3,8 @@ from django.utils.html import format_html
 from django.urls import path
 from django.shortcuts import redirect, render
 from django.utils import timezone
-from .models import BusinessOwner, Category, Customer, InventoryItem, Sale, SaleItem, SignupToken
+from .models import BusinessOwner, Category, Customer, InventoryItem, Sale, SaleItem, SignupToken, PaymentTransaction
+from .utils import send_signup_token_email
 
 # Custom admin for BusinessOwner
 @admin.register(BusinessOwner)
@@ -104,6 +105,18 @@ class SignupTokenAdmin(admin.ModelAdmin):
         form.base_fields["duration_days"].required = False
         return form
 
+    def save_model(self, request, obj, form, change):
+        """Override save to send email when creating new token"""
+        is_new = obj.pk is None
+        super().save_model(request, obj, form, change)
+        
+        # Send email for new tokens with duration
+        if is_new and obj.duration_days:
+            if send_signup_token_email(obj.email, obj.token, obj.duration_days):
+                self.message_user(request, f"Signup token created and email sent to {obj.email}")
+            else:
+                self.message_user(request, f"Signup token created but failed to send email to {obj.email}", level=messages.WARNING)
+
     def signup_url(self, obj):
         # Use get_absolute_url if available, else fallback
         if not obj.token:
@@ -147,8 +160,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if not obj.is_used and obj.is_valid:
                 self.message_user(request, f"Token for {obj.email} is already valid.")
                 continue
-            SignupToken.generate_token(obj.email)
-            self.message_user(request, f"New token generated for {obj.email}.")
+            
+            # Delete existing token and create new one
+            SignupToken.objects.filter(email=obj.email).delete()
+            new_token = SignupToken.generate_token(obj.email)
+            
+            # Set duration if it was set on the original object
+            if obj.duration_days:
+                new_token.duration_days = obj.duration_days
+                new_token.save()
+                
+                # Send email with new token
+                if send_signup_token_email(new_token.email, new_token.token, new_token.duration_days):
+                    self.message_user(request, f"New token generated and email sent to {new_token.email}")
+                else:
+                    self.message_user(request, f"New token generated but failed to send email to {new_token.email}", level=messages.WARNING)
+            else:
+                self.message_user(request, f"New token generated for {new_token.email}")
     generate_signup_token.short_description = "Generate new signup token for selected emails"
 
     def has_add_permission(self, request):
@@ -172,9 +200,11 @@ admin.site.unregister(Customer) if admin.site.is_registered(Customer) else None
 admin.site.unregister(InventoryItem) if admin.site.is_registered(InventoryItem) else None
 admin.site.unregister(Sale) if admin.site.is_registered(Sale) else None
 admin.site.unregister(SaleItem) if admin.site.is_registered(SaleItem) else None
+admin.site.unregister(PaymentTransaction) if admin.site.is_registered(PaymentTransaction) else None
 
 admin.site.register(Category, ReadOnlyAdmin)
 admin.site.register(Customer, ReadOnlyAdmin)
 admin.site.register(InventoryItem, ReadOnlyAdmin)
 admin.site.register(Sale, ReadOnlyAdmin)
 admin.site.register(SaleItem, ReadOnlyAdmin)
+admin.site.register(PaymentTransaction)

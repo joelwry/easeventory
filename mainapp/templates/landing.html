@@ -1,25 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EasyBook Inventory Management - Simplify Your Business</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #2563eb; /* Blue-600 */
-            --primary-dark: #1d4ed8; /* Blue-700 */
-            --secondary-color: #64748b; /* Slate-500 */
-            --success-color: #10b981; /* Green-500 */
-            --warning-color: #f59e0b; /* Amber-500 */
-            --danger-color: #ef4444; /* Red-500 */
-            --dark-color: #1e293b; /* Slate-800 */
-            --light-color: #f8fafc; /* Slate-50 */
-            --text-color: #334155; /* Slate-700 */
-            --heading-color: #1e293b; /* Slate-800 */
-            --background-light: #f1f5f9; /* Slate-100 */
-            --background-dark: #e2e8f0; /* Slate-200 */
+            --primary-color: #2563eb;
+            /* Blue-600 */
+            --primary-dark: #1d4ed8;
+            /* Blue-700 */
+            --secondary-color: #64748b;
+            /* Slate-500 */
+            --success-color: #10b981;
+            /* Green-500 */
+            --warning-color: #f59e0b;
+            /* Amber-500 */
+            --danger-color: #ef4444;
+            /* Red-500 */
+            --dark-color: #1e293b;
+            /* Slate-800 */
+            --light-color: #f8fafc;
+            /* Slate-50 */
+            --text-color: #334155;
+            /* Slate-700 */
+            --heading-color: #1e293b;
+            /* Slate-800 */
+            --background-light: #f1f5f9;
+            /* Slate-100 */
+            --background-dark: #e2e8f0;
+            /* Slate-200 */
         }
 
         * {
@@ -34,7 +48,8 @@
             color: var(--text-color);
             line-height: 1.6;
             overflow-x: hidden;
-            scroll-behavior: smooth; /* For smooth scrolling */
+            scroll-behavior: smooth;
+            /* For smooth scrolling */
         }
 
         /* Reusable Components */
@@ -82,15 +97,26 @@
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
         }
 
-        h1, h2, h3, h4 {
+        h1,
+        h2,
+        h3,
+        h4 {
             color: var(--heading-color);
             font-weight: 800;
             line-height: 1.2;
         }
 
-        h1 { font-size: 3.5rem; }
-        h2 { font-size: 2.5rem; }
-        h3 { font-size: 1.75rem; }
+        h1 {
+            font-size: 3.5rem;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+        }
+
+        h3 {
+            font-size: 1.75rem;
+        }
 
         .section-title {
             text-align: center;
@@ -175,7 +201,7 @@
             align-items: center;
             gap: 1rem;
         }
-        
+
         .whatsapp-link {
             display: flex;
             align-items: center;
@@ -207,7 +233,7 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at top left, rgba(255,255,255,0.1) 0%, transparent 70%);
+            background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
             transform: rotate(45deg);
         }
 
@@ -234,7 +260,7 @@
             margin-right: auto;
             opacity: 0.9;
         }
-        
+
         .hero .cta-btn {
             background: white;
             color: var(--primary-color);
@@ -345,6 +371,7 @@
         .works-item h3 {
             margin-bottom: 0.75rem;
         }
+
         .works-item p {
             color: var(--secondary-color);
         }
@@ -356,7 +383,8 @@
             text-align: center;
             color: white;
             position: relative;
-            overflow: hidden; /* Ensure testimonial slides are clipped */
+            overflow: hidden;
+            /* Ensure testimonial slides are clipped */
         }
 
         .testimonials-section .section-title {
@@ -371,7 +399,8 @@
             position: relative;
             max-width: 800px;
             margin: 0 auto;
-            height: 250px; /* Adjust height based on content to prevent jumping */
+            height: 250px;
+            /* Adjust height based on content to prevent jumping */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -384,18 +413,22 @@
             width: 100%;
             backdrop-filter: blur(5px);
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-            position: absolute; /* Allows stacking and fade effects */
+            position: absolute;
+            /* Allows stacking and fade effects */
             opacity: 0;
             visibility: hidden;
-            transform: scale(0.9); /* Initial state for zoom effect */
-            transition: opacity 0.7s ease-out, transform 0.7s ease-out, visibility 0.7s ease-out; /* Smooth transitions */
+            transform: scale(0.9);
+            /* Initial state for zoom effect */
+            transition: opacity 0.7s ease-out, transform 0.7s ease-out, visibility 0.7s ease-out;
+            /* Smooth transitions */
         }
 
         .testimonial-card.active {
             opacity: 1;
             visibility: visible;
             transform: scale(1);
-            position: relative; /* Take up space when active */
+            position: relative;
+            /* Take up space when active */
         }
 
         .testimonial-card.prev {
@@ -450,7 +483,8 @@
             flex-wrap: wrap;
             justify-content: center;
             gap: 2.5rem;
-            align-items: flex-end; /* Aligns cards at the bottom if heights differ */
+            align-items: flex-end;
+            /* Aligns cards at the bottom if heights differ */
         }
 
         .pricing-card {
@@ -459,15 +493,17 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
             padding: 3rem 2.5rem;
             text-align: center;
-            flex: 1 1 350px; /* Allows cards to grow and shrink, min-width 350px */
+            flex: 1 1 350px;
+            /* Allows cards to grow and shrink, min-width 350px */
             max-width: 400px;
             transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            min-height: 480px; /* Ensure similar heights */
+            min-height: 480px;
+            /* Ensure similar heights */
         }
-        
+
         .pricing-card.popular {
             transform: scale(1.05);
             border: 3px solid var(--primary-color);
@@ -485,7 +521,7 @@
             margin-bottom: 1rem;
             font-weight: 800;
         }
-        
+
         .pricing-card .tag {
             background: var(--primary-color);
             color: white;
@@ -538,7 +574,7 @@
             padding: 0.9rem 2rem;
             margin-top: 2rem;
         }
-        
+
         /* CTA Section */
         .call-to-action {
             background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
@@ -614,19 +650,26 @@
 
         /* Modal for Payment Email Input */
         .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 2000; /* Sit on top */
+            display: none;
+            /* Hidden by default */
+            position: fixed;
+            /* Stay in place */
+            z-index: 2000;
+            /* Sit on top */
             left: 0;
             top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+            width: 100%;
+            /* Full width */
+            height: 100%;
+            /* Full height */
+            background-color: rgba(0, 0, 0, 0.6);
+            /* Black w/ opacity */
             backdrop-filter: blur(3px);
             justify-content: center;
             align-items: center;
             opacity: 0;
-            transition: opacity 0.3s ease; /* Fade-in background */
+            transition: opacity 0.3s ease;
+            /* Fade-in background */
         }
 
         .modal.show {
@@ -641,13 +684,16 @@
             border-radius: 16px;
             width: 90%;
             max-width: 500px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             position: relative;
-            transform: scale(0.8); /* Initial state for zoom */
-            opacity: 0; /* Initial state for fade */
-            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.4s ease-out; /* Zoom & Fade transition */
+            transform: scale(0.8);
+            /* Initial state for zoom */
+            opacity: 0;
+            /* Initial state for fade */
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.4s ease-out;
+            /* Zoom & Fade transition */
         }
-        
+
         .modal.show .modal-content {
             transform: scale(1);
             opacity: 1;
@@ -658,6 +704,7 @@
             transform: scale(0.8);
             opacity: 0;
         }
+
         .modal.hide {
             opacity: 0;
         }
@@ -730,50 +777,162 @@
 
         /* Responsive Adjustments */
         @media (max-width: 992px) {
-            h1 { font-size: 3rem; }
-            h2 { font-size: 2rem; }
-            .hero h1 { font-size: 3rem; }
-            .hero p { font-size: 1.3rem; }
-            .feature-card { padding: 2rem; }
-            .pricing-card { padding: 2.5rem 2rem; min-height: auto;}
-            .pricing-card .price { font-size: 3rem; }
-            .pricing-cards-grid { flex-direction: column; align-items: center; }
-            .testimonial-slider { height: 300px; /* Adjust height for smaller screens */ }
+            h1 {
+                font-size: 3rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .hero p {
+                font-size: 1.3rem;
+            }
+
+            .feature-card {
+                padding: 2rem;
+            }
+
+            .pricing-card {
+                padding: 2.5rem 2rem;
+                min-height: auto;
+            }
+
+            .pricing-card .price {
+                font-size: 3rem;
+            }
+
+            .pricing-cards-grid {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .testimonial-slider {
+                height: 300px;
+                /* Adjust height for smaller screens */
+            }
         }
 
         @media (max-width: 768px) {
-            h1 { font-size: 2.5rem; }
-            h2 { font-size: 1.8rem; }
-            .hero { padding: 4rem 0; }
-            .hero h1 { font-size: 2.5rem; }
-            .hero p { font-size: 1.1rem; }
-            .hero .cta-btn { font-size: 1rem; padding: 0.8rem 2rem; }
-            .section-title { font-size: 2rem; }
-            header .nav-buttons { flex-direction: column; gap: 0.5rem; }
-            nav { display: none; } /* Hide main nav for mobile, could use a hamburger menu if desired */
-            .header-content { flex-direction: column; gap: 1rem; }
-            .logo { margin-bottom: 0.5rem; }
-            .contact-info { flex-direction: column; gap: 0.5rem; }
-            .testimonial-slider { height: 350px; /* Adjust height for smaller screens */ }
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 1.8rem;
+            }
+
+            .hero {
+                padding: 4rem 0;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .hero .cta-btn {
+                font-size: 1rem;
+                padding: 0.8rem 2rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            header .nav-buttons {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            nav {
+                display: none;
+            }
+
+            /* Hide main nav for mobile, could use a hamburger menu if desired */
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .logo {
+                margin-bottom: 0.5rem;
+            }
+
+            .contact-info {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .testimonial-slider {
+                height: 350px;
+                /* Adjust height for smaller screens */
+            }
         }
 
         @media (max-width: 480px) {
-            .container { padding: 0 1rem; }
-            h1 { font-size: 2rem; }
-            h2 { font-size: 1.5rem; }
-            .hero h1 { font-size: 2rem; }
-            .hero p { font-size: 1rem; }
-            .btn { padding: 0.7rem 1.5rem; font-size: 0.9rem; }
-            .feature-card { padding: 1.5rem; }
-            .feature-card i { font-size: 3rem; }
-            .works-item .icon-wrapper { width: 60px; height: 60px; font-size: 2rem; }
-            .pricing-card { padding: 2rem 1.5rem; }
-            .pricing-card .price { font-size: 2.5rem; }
-            .testimonial-slider { height: 400px; /* Adjust height for very small screens */ }
-        }
+            .container {
+                padding: 0 1rem;
+            }
 
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .btn {
+                padding: 0.7rem 1.5rem;
+                font-size: 0.9rem;
+            }
+
+            .feature-card {
+                padding: 1.5rem;
+            }
+
+            .feature-card i {
+                font-size: 3rem;
+            }
+
+            .works-item .icon-wrapper {
+                width: 60px;
+                height: 60px;
+                font-size: 2rem;
+            }
+
+            .pricing-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .pricing-card .price {
+                font-size: 2.5rem;
+            }
+
+            .testimonial-slider {
+                height: 400px;
+                /* Adjust height for very small screens */
+            }
+        }
     </style>
 </head>
+
 <body>
     <header>
         <div class="container header-content">
@@ -797,8 +956,10 @@
     <section class="hero">
         <div class="container hero-content">
             <h1>Unlock Business Growth with EasyBook Inventory</h1>
-            <p>Streamline your inventory, track sales in real-time, and gain powerful insights to boost your profits.</p>
-            <a href="#" class="btn btn-primary cta-btn" onclick="openPaymentModal('yearly')">Start Your Subscription Today!</a>
+            <p>Streamline your inventory, track sales in real-time, and gain powerful insights to boost your profits.
+            </p>
+            <a href="#" class="btn btn-primary cta-btn" onclick="openPaymentModal('yearly')">Start Your Subscription
+                Today!</a>
         </div>
     </section>
 
@@ -809,32 +970,38 @@
                 <div class="feature-card">
                     <i class="fas fa-chart-line"></i>
                     <h3>Real-time Sales & Stock Insights</h3>
-                    <p>Always know what's selling and what's not. Monitor inventory levels and sales performance instantly from your dashboard.</p>
+                    <p>Always know what's selling and what's not. Monitor inventory levels and sales performance
+                        instantly from your dashboard.</p>
                 </div>
                 <div class="feature-card">
                     <i class="fas fa-file-invoice-dollar"></i>
                     <h3>Automated Invoicing & Receipts</h3>
-                    <p>Generate professional invoices and send digital receipts with ease. Impress your customers and simplify bookkeeping.</p>
+                    <p>Generate professional invoices and send digital receipts with ease. Impress your customers and
+                        simplify bookkeeping.</p>
                 </div>
                 <div class="feature-card">
                     <i class="fas fa-user-friends"></i>
                     <h3>Efficient Customer Management</h3>
-                    <p>Keep track of your customer base, their purchase history, and preferences to build stronger relationships.</p>
+                    <p>Keep track of your customer base, their purchase history, and preferences to build stronger
+                        relationships.</p>
                 </div>
                 <div class="feature-card">
                     <i class="fas fa-cubes"></i>
                     <h3>Seamless Product & Category Control</h3>
-                    <p>Organize your products by categories, manage variants, and update stock efficiently across all your items.</p>
+                    <p>Organize your products by categories, manage variants, and update stock efficiently across all
+                        your items.</p>
                 </div>
                 <div class="feature-card">
                     <i class="fas fa-users-cog"></i>
                     <h3>Multi-User & Role Management</h3>
-                    <p>Add your staff with specific roles and permissions, ensuring smooth operations while maintaining control.</p>
+                    <p>Add your staff with specific roles and permissions, ensuring smooth operations while maintaining
+                        control.</p>
                 </div>
                 <div class="feature-card">
                     <i class="fas fa-mobile-alt"></i>
                     <h3>Access Anywhere, Anytime</h3>
-                    <p>Manage your inventory on the go. EasyBook is cloud-based, accessible from any device with an internet connection.</p>
+                    <p>Manage your inventory on the go. EasyBook is cloud-based, accessible from any device with an
+                        internet connection.</p>
                 </div>
             </div>
         </div>
@@ -847,17 +1014,20 @@
                 <div class="works-item">
                     <div class="icon-wrapper"><i class="fas fa-money-bill-wave"></i></div>
                     <h3>Boost Profitability</h3>
-                    <p>Identify best-selling products, optimize pricing, and reduce dead stock to significantly improve your bottom line.</p>
+                    <p>Identify best-selling products, optimize pricing, and reduce dead stock to significantly improve
+                        your bottom line.</p>
                 </div>
                 <div class="works-item">
                     <div class="icon-wrapper"><i class="fas fa-clock"></i></div>
                     <h3>Save Valuable Time</h3>
-                    <p>Automate tedious manual processes like stock-taking and reporting, freeing up your time to focus on growth.</p>
+                    <p>Automate tedious manual processes like stock-taking and reporting, freeing up your time to focus
+                        on growth.</p>
                 </div>
                 <div class="works-item">
                     <div class="icon-wrapper"><i class="fas fa-handshake"></i></div>
                     <h3>Enhance Customer Satisfaction</h3>
-                    <p>With accurate stock data, you can fulfill orders faster and avoid disappointing customers due to stockouts.</p>
+                    <p>With accurate stock data, you can fulfill orders faster and avoid disappointing customers due to
+                        stockouts.</p>
                 </div>
                 <div class="works-item">
                     <div class="icon-wrapper"><i class="fas fa-shield-alt"></i></div>
@@ -873,45 +1043,52 @@
             <h2 class="section-title">What Our Users Say</h2>
             <div class="testimonial-slider">
                 <div class="testimonial-card active">
-                    <p>"EasyBook has revolutionized how I manage my small boutique. Tracking inventory and sales used to be a headache, but now it's effortless. Highly recommend!"</p>
+                    <p>"EasyBook has revolutionized how I manage my small boutique. Tracking inventory and sales used to
+                        be a headache, but now it's effortless. Highly recommend!"</p>
                     <div class="author">- Aisha P., Boutique Owner</div>
                 </div>
                 <div class="testimonial-card">
-                    <p>"Finally, an inventory system that's intuitive and powerful. The real-time reporting helps me make smarter decisions daily."</p>
+                    <p>"Finally, an inventory system that's intuitive and powerful. The real-time reporting helps me
+                        make smarter decisions daily."</p>
                     <div class="author">- Bayo A., Electronics Store Manager</div>
                 </div>
                 <div class="testimonial-card">
-                    <p>"Managing multiple staff and keeping track of stock was chaotic. EasyBook brought order and efficiency to my entire operation."</p>
+                    <p>"Managing multiple staff and keeping track of stock was chaotic. EasyBook brought order and
+                        efficiency to my entire operation."</p>
                     <div class="author">- Chioma E., Supermarket Proprietor</div>
                 </div>
                 <div class="testimonial-card">
-                    <p>"The invoicing feature alone saves me hours every week. Plus, knowing my exact stock levels prevents overstocking and shortages."</p>
+                    <p>"The invoicing feature alone saves me hours every week. Plus, knowing my exact stock levels
+                        prevents overstocking and shortages."</p>
                     <div class="author">- Emeka O., Hardware Store Owner</div>
                 </div>
                 <div class="testimonial-card">
-                    <p>"Customer management has never been easier. I can see their purchase history at a glance, which helps with personalized service."</p>
+                    <p>"Customer management has never been easier. I can see their purchase history at a glance, which
+                        helps with personalized service."</p>
                     <div class="author">- Fatima L., Pharmacy Manager</div>
                 </div>
                 <div class="testimonial-card">
-                    <p>"The best investment I've made for my business this year. Simple to use, fantastic support, and incredibly effective."</p>
+                    <p>"The best investment I've made for my business this year. Simple to use, fantastic support, and
+                        incredibly effective."</p>
                     <div class="author">- Kunle S., Restaurant Owner</div>
                 </div>
             </div>
             <div class="slider-dots">
-                </div>
+            </div>
         </div>
     </section>
 
     <section class="pricing-section" id="pricing-section">
         <div class="container">
             <h2 class="section-title">Simple & Transparent Pricing</h2>
-            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 3rem; color: var(--secondary-color);">Choose the plan that fits your business needs. Cancel anytime.</p>
+            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 3rem; color: var(--secondary-color);">Choose
+                the plan that fits your business needs. Cancel anytime.</p>
 
             <div class="pricing-cards-grid">
                 <div class="pricing-card">
                     <div>
                         <h3>Monthly Plan</h3>
-                        <div class="price">₦30,000<small>/month</small></div>
+                        <div class="price">₦{{ monthly_amount|floatformat:0 }}<small>/month</small></div>
                         <ul>
                             <li><i class="fas fa-check-circle"></i> Real-time Inventory Tracking</li>
                             <li><i class="fas fa-check-circle"></i> Unlimited Products & Categories</li>
@@ -928,8 +1105,8 @@
                     <div>
                         <div class="tag">Most Popular!</div>
                         <h3>Yearly Plan</h3>
-                        <div class="price">₦300,000<small>/year</small></div>
-                        <p style="font-size: 0.95rem; color: var(--text-color);">*Save ₦60,000 annually!</p>
+                        <div class="price">₦{{ yearly_amount|floatformat:0 }}<small>/year</small></div>
+                        <p style="font-size: 0.95rem; color: var(--text-color);">*Save 20% off annually!</p>
                         <ul>
                             <li><i class="fas fa-check-circle"></i> All Monthly Plan Features</li>
                             <li><i class="fas fa-check-circle"></i> Priority Customer Support</li>
@@ -948,7 +1125,8 @@
     <section class="call-to-action">
         <div class="container">
             <h2>Ready to Take Control of Your Business?</h2>
-            <p>Join hundreds of business owners who are already simplifying their operations and boosting their growth with EasyBook Inventory Management.</p>
+            <p>Join hundreds of business owners who are already simplifying their operations and boosting their growth
+                with EasyBook Inventory Management.</p>
             <a href="#" class="btn btn-primary" onclick="openPaymentModal('yearly')">Start Managing Smarter Today!</a>
         </div>
     </section>
@@ -976,7 +1154,8 @@
         <div class="modal-content">
             <span class="close-button" onclick="closePaymentModal()">&times;</span>
             <h3>Enter Your Email to Proceed with Payment</h3>
-            <p style="margin-bottom: 1.5rem; text-align: center; font-size: 0.95rem; color: var(--secondary-color);">We'll send your signup link to this email after successful payment.</p>
+            <p style="margin-bottom: 1.5rem; text-align: center; font-size: 0.95rem; color: var(--secondary-color);">
+                We'll send your signup link to this email after successful payment.</p>
             <label for="paymentEmail">Email Address:</label>
             <input type="email" id="paymentEmail" placeholder="your.email@example.com">
             <button id="modalPayButton">Proceed to Pay</button>
@@ -1002,6 +1181,9 @@
         const modalPayButton = document.getElementById('modalPayButton');
         const paymentEmailInput = document.getElementById('paymentEmail');
         let currentPlan = '';
+        const monthlyPlan = "{{ paystack_plans.monthly }}";
+        const yearlyPlan = "{{ paystack_plans.yearly }}";
+
 
         function openPaymentModal(plan) {
             currentPlan = plan;
@@ -1016,7 +1198,7 @@
         function closePaymentModal() {
             paymentModal.classList.remove('show');
             paymentModal.classList.add('hide'); // Trigger hide animation
-            
+
             // Wait for the animation to complete before hiding display
             paymentModal.addEventListener('transitionend', function handler() {
                 paymentModal.style.display = 'none';
@@ -1028,6 +1210,7 @@
             paymentEmailInput.value = ''; // Clear email input
         }
 
+
         modalPayButton.addEventListener('click', () => {
             const email = paymentEmailInput.value;
             if (!email || !/\S+@\S+\.\S+/.test(email)) {
@@ -1035,31 +1218,81 @@
                 return;
             }
 
-            const monthlyPlan = "PLN_hmolnhz0h7d70y1"; // Replace with your real Paystack monthly plan code
-            const yearlyPlan = "PLN_xcvqqlnhgfe086j";    // Replace with your real Paystack yearly plan code (updated for demo)
-
-            const handler = PaystackPop.setup({
-                key: 'pk_live_b122dd5003bdfeeb77b9390abc9c423d71bd7f5d', // Replace with your public key
-                email: email,
-                plan: currentPlan === 'monthly' ? monthlyPlan : yearlyPlan,
-                callback: function(response) {
-                    alert('Payment successful! Your signup link will be sent to your email shortly.');
-                    // IMPORTANT: In a real application, this token generation
-                    // and redirection should happen on your server *after*
-                    // verifying the Paystack webhook callback for payment success.
-                    // Directly redirecting here can be insecure as payment might fail.
-                    // The dummyToken below is for front-end demonstration only.
-                    const dummyToken = 'your_generated_secure_token_here_from_backend';
-                    window.location.href = `/signup/${dummyToken}/`; 
+            // 1. Call your backend API to initialize the payment
+            fetch('/api/v1/payment/initialize/', { // Adjust this URL to your actual API endpoint
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
                 },
-                onClose: function() {
-                    alert('Transaction was not completed. Please try again.');
-                }
-            });
+                body: JSON.stringify({
+                    email: email,
+                    plan_type: currentPlan // 'monthly' or 'yearly'
+                })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        // Handle HTTP errors
+                        return response.json().then(err => { throw new Error(err.error || 'Failed to initialize payment'); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 2. Use the 'reference' and 'authorization_url' from the backend response
+                    const authorizationUrl = data.authorization_url;
+                    const reference = data.reference;
+                    const signupToken = data.signup_token; // If you need this on the 
+                    
+                    const amountInKobo = data.amount; 
+                    const paystackPlanCode = data.plan_code;
+                    const handler = PaystackPop.setup({
+                        key: '{{ paystack_public_key }}', // Your public key
+                        email: email,
+                        reference: reference,
+                        amount: amountInKobo, // <-- ADD THIS: Amount in kobo/cents
+                        plan: paystackPlanCode,
+                        
+                        // Use the reference from your backend
+                        // Note: You don't need to pass 'plan' here if you've already passed it to initialize.
+                        // Paystack will use the plan associated with the initialized transaction.
+                        callback: function (response) {
+                            // This callback fires when the payment is successful
+                            // Redirect to your verify page with the reference
+                            window.location.href = `/payment/verify/unauth?reference=${response.reference}`;
+                        },
+                        onClose: function () {
+                            // Called if the user closes the modal without completing payment
+                            alert('Payment modal closed. Transaction was not completed.');
+                        }
+                    });
+                    handler.openIframe(); // Open the Paystack Pop modal
+                })
+                .catch(error => {
+                    console.error('Error initializing payment:', error);
+                    alert('Error initializing payment: ' + error.message);
+                });
 
-            handler.openIframe();
+            closePaymentModal(); // Close your custom email modal
         });
 
+       
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
         // Close modal when clicking outside
         window.addEventListener('click', (event) => {
             if (event.target == paymentModal) {
@@ -1101,7 +1334,7 @@
             // Add active to new
             testimonialCards[currentTestimonialIndex].classList.remove('prev'); // Remove prev if it was there
             testimonialCards[currentTestimonialIndex].classList.add('active');
-            
+
             // Update dots
             sliderDotsContainer.children[currentTestimonialIndex].classList.add('active');
         }
@@ -1122,4 +1355,5 @@
 
     </script>
 </body>
+
 </html>

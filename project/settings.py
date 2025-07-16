@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s(g38+@vc#ka%v72#$t++p3vejt@75-@&to^*bfge$j@qlsf0a'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-s(g38+@vc#ka%v72#$t++p3vejt@75-@&to^*bfge$j@qlsf0a')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost',  'easybook.com.ng', '192.168.43.10']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost,easybook.com.ng,192.168.43.10').split(',')
 
 
 # Application definition
@@ -143,9 +148,8 @@ STATICFILES_DIRS = [
     str(BASE_DIR / "mainapp/static"),
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:300"
-]
+# CORS Settings
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:300').split(',')
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -154,3 +158,38 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Email Configuration
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')  # For Gmail
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'your-email@gmail.com')  
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'your-app-password')  
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'EasyBook <your-email@gmail.com>')
+
+# Site URL for email links
+SITE_URL = os.getenv('SITE_URL', 'http://127.0.0.1:8000')  
+
+# Paystack Configuration
+PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY', 'sk_test_...') 
+PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY', 'pk_test_...')  
+
+# Paystack Plan Codes
+PAYSTACK_PLANS = {
+    'monthly': os.getenv('PAYSTACK_MONTHLY_PLAN', 'PLN_monthly_plan_code'),
+    'yearly': os.getenv('PAYSTACK_YEARLY_PLAN', 'PLN_yearly_plan_code'),
+}
+
+# Subscription Amounts (in kobo)
+MONTHLY_SUBSCRIPTION_AMOUNT = int(os.getenv('MONTHLY_SUBSCRIPTION_AMOUNT', '3000000'))
+YEARLY_SUBSCRIPTION_AMOUNT = int(os.getenv('YEARLY_SUBSCRIPTION_AMOUNT', '30000000'))
+
+# Production settings (uncomment when deploying)
+# EMAIL_HOST = 'smtp.sendgrid.net'  # For SendGrid
+# EMAIL_HOST_USER = 'apikey'
+# EMAIL_HOST_PASSWORD = 'your-sendgrid-api-key'
+# SITE_URL = 'https://yourdomain.com'
+# PAYSTACK_SECRET_KEY = 'sk_live_...'  # Live secret key
+# PAYSTACK_PUBLIC_KEY = 'pk_live_...'  # Live public key 

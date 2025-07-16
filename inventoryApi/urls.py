@@ -6,7 +6,8 @@ from .views import (
     inventory_list_api, customer_list_api, customer_detail_api,
     category_list_count,
     add_inventory_item, update_inventory_item, delete_inventory_item, adjust_stock, inventory_stats,
-    analytics_data, export_sales_csv, export_inventory_csv
+    analytics_data, export_sales_csv, export_inventory_csv,
+    initialize_payment, initialize_renewal_payment, paystack_webhook, verify_payment, PaystackWebhook2
 )
 from . import views
 from django.contrib.auth.views import LogoutView
@@ -39,4 +40,14 @@ urlpatterns = [
     path('analytics/', analytics_data, name='analytics-data'),
     path('export/sales/', export_sales_csv, name='export-sales-csv'),
     path('export/inventory/', export_inventory_csv, name='export-inventory-csv'),
+    
+    # Payment API endpoints
+    path('payment/initialize/', initialize_payment, name='initialize_payment'),
+    path('payment/renewal/', initialize_renewal_payment, name='initialize_renewal_payment'),
+    path('payment/webhook/', paystack_webhook, name='paystack_webhook'),
+    path('payment/verify/', verify_payment, name='verify_payment'),
+]
+
+urlpatterns += [
+    path('paystack/webhook2/', PaystackWebhook2.as_view(), name='paystack_webhook2'),
 ]

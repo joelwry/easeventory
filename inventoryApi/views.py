@@ -18,11 +18,28 @@ from mainapp.models import Category
 from datetime import timedelta
 from django.utils import timezone
 import csv
-from mainapp.utils import active_subscription_required
-
+from mainapp.utils import active_subscription_required, verify_paystack_webhook, send_signup_token_email, send_payment_confirmation_email
+import requests
+import json
+from rest_framework import status
 import logging
+import os
+from django.conf import settings
+from mainapp.models import PaymentTransaction  # Add this import
+from rest_framework.views import APIView  # For PaystackWebhook2
 
 logger = logging.getLogger(__name__)
+
+# Paystack API configuration from settings
+PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
+PAYSTACK_PUBLIC_KEY = settings.PAYSTACK_PUBLIC_KEY
+
+# Paystack plan codes from settings
+PAYSTACK_PLANS = settings.PAYSTACK_PLANS
+
+# Subscription amounts from settings
+MONTHLY_SUBSCRIPTION_AMOUNT = settings.MONTHLY_SUBSCRIPTION_AMOUNT
+YEARLY_SUBSCRIPTION_AMOUNT = settings.YEARLY_SUBSCRIPTION_AMOUNT
 
 # ✅ Inventory view with staff-only delete
 
@@ -602,3 +619,433 @@ def export_inventory_csv(request):
             item.id, item.name, item.category.name if item.category else '', item.sku, item.price, item.quantity, item.min_stock, item.status, item.created_at.strftime('%Y-%m-%d %H:%M')
         ])
     return response
+
+# Paystack Payment Endpoints
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def initialize_payment(request):
+    """Initialize payment for new signup from landing page"""
+    try:
+        data = request.data
+        email = data.get('email')
+        plan_type = data.get('plan_type', 'yearly')  # monthly or yearly
+        
+        if not email:
+            return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create signup token with duration based on plan
+        duration_days = 365 if plan_type == 'yearly' else 30
+        
+        # Generate signup token
+        signup_token = SignupToken.generate_token(email)
+        signup_token.duration_days = duration_days
+        # signup_token.save()
+        
+        amount = YEARLY_SUBSCRIPTION_AMOUNT if plan_type == 'yearly' else MONTHLY_SUBSCRIPTION_AMOUNT
+        plan = PAYSTACK_PLANS.get(plan_type)
+        # Initialize Paystack 
+        paystack_data = {
+            'email': email,
+            'amount': amount,
+            'plan':plan,
+            'callback_url': f"{request.build_absolute_uri('/')}payment/verify/",
+            'metadata': {
+                'email': email,
+                'plan_type': plan_type,
+                'signup_token': signup_token.token,
+                'duration_days': duration_days
+            }
+        }
+        
+        # Make request to Paystack
+        headers = {
+            'Authorization': f'Bearer {PAYSTACK_SECRET_KEY}',
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.post(
+            'https://api.paystack.co/transaction/initialize',
+            headers=headers,
+            json=paystack_data
+        )
+
+        if response.status_code == 200:
+            paystack_response = response.json()
+            print("PAYSTACK RESPONSE ON INITIALIZING PAYMENT")
+            print(paystack_response)
+            return Response({
+                'authorization_url': paystack_response['data']['authorization_url'],
+                'reference': paystack_response['data']['reference'],
+                'signup_token': signup_token.token,
+                "amount": amount, 
+                "plan_code": plan
+
+            })
+        else:
+            return Response({'error': 'Failed to initialize payment'}, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def initialize_renewal_payment(request):
+    """Initialize payment for subscription renewal"""
+    try:
+        data = request.data
+        plan_type = data.get('plan_type', 'yearly')
+        
+        if not request.user.is_authenticated:
+            return Response({'error': 'User must be authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        business_owner = request.user
+        
+        # Initialize Paystack payment
+        paystack_data = {
+            'email': business_owner.email,
+            'amount': YEARLY_SUBSCRIPTION_AMOUNT if plan_type == 'yearly' else MONTHLY_SUBSCRIPTION_AMOUNT,  # Amount in kobo
+            'plan': PAYSTACK_PLANS.get(plan_type),
+            'callback_url': f"{request.build_absolute_uri('/')}payment/verify/",
+            'metadata': {
+                'email': business_owner.email,
+                'plan_type': plan_type,
+                'business_owner_id': business_owner.id,
+                'is_renewal': True
+            }
+        }
+        
+        # Make request to Paystack
+        headers = {
+            'Authorization': f'Bearer {PAYSTACK_SECRET_KEY}',
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.post(
+            'https://api.paystack.co/transaction/initialize',
+            headers=headers,
+            json=paystack_data
+        )
+        
+        if response.status_code == 200:
+            paystack_response = response.json()
+            return Response({
+                'authorization_url': paystack_response['data']['authorization_url'],
+                'reference': paystack_response['data']['reference']
+            })
+        else:
+            return Response({'error': 'Failed to initialize payment'}, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def paystack_webhook(request):
+    """Handle Paystack webhook for payment confirmations"""
+    try:
+        # Verify webhook signature
+        if not verify_paystack_webhook(request):
+            return Response({'error': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Parse webhook data
+        webhook_data = json.loads(request.body)
+        event = webhook_data.get('event')
+        data = webhook_data.get('data', {})
+        
+        if event == 'charge.success':
+            # Payment was successful
+            reference = data.get('reference')
+            metadata = data.get('metadata', {})
+            email = metadata.get('email')
+            plan_type = metadata.get('plan_type')
+            signup_token = metadata.get('signup_token')
+            business_owner_id = metadata.get('business_owner_id')
+            is_renewal = metadata.get('is_renewal', False)
+            
+            if is_renewal and business_owner_id:
+                # Handle subscription renewal
+                try:
+                    business_owner = BusinessOwner.objects.get(id=business_owner_id)
+                    duration_days = 365 if plan_type == 'yearly' else 30
+                    
+                    # Update subscription
+                    business_owner.activate_subscription(duration_days=duration_days, plan_type=plan_type)
+                    business_owner.last_payment_reference = reference
+                    business_owner.last_payment_date = timezone.now()
+                    business_owner.save()
+                    
+                    # Send confirmation email
+                    send_payment_confirmation_email(business_owner)
+                    
+                    logger.info(f"Subscription renewed for {business_owner.email}")
+                    
+                except BusinessOwner.DoesNotExist:
+                    logger.error(f"Business owner not found: {business_owner_id}")
+                    
+            elif signup_token:
+                # Handle new signup payment
+                try:
+                    # Verify signup token exists and is valid
+                    token_obj = SignupToken.objects.get(token=signup_token, email=email)
+                    
+                    # Send signup token email
+                    duration_days = metadata.get('duration_days', 30)
+                    send_signup_token_email(email, signup_token, duration_days)
+                    
+                    logger.info(f"Signup token sent to {email}")
+                    
+                except SignupToken.DoesNotExist:
+                    logger.error(f"Signup token not found: {signup_token}")
+        
+        elif event == 'subscription.create':
+            # Subscription was created
+            subscription_code = data.get('subscription_code')
+            customer_code = data.get('customer', {}).get('customer_code')
+            email = data.get('customer', {}).get('email')
+            
+            # Update business owner with subscription details
+            try:
+                business_owner = BusinessOwner.objects.get(email=email)
+                business_owner.paystack_subscription_code = subscription_code
+                business_owner.paystack_customer_code = customer_code
+                business_owner.save()
+                
+                logger.info(f"Subscription created for {email}")
+                
+            except BusinessOwner.DoesNotExist:
+                logger.error(f"Business owner not found for subscription: {email}")
+        
+        elif event == 'subscription.disable':
+            # Subscription was disabled/cancelled
+            subscription_code = data.get('subscription_code')
+            
+            try:
+                business_owner = BusinessOwner.objects.get(paystack_subscription_code=subscription_code)
+                business_owner.subscription_status = 'expired'
+                business_owner.save()
+                
+                logger.info(f"Subscription disabled for {business_owner.email}")
+                
+            except BusinessOwner.DoesNotExist:
+                logger.error(f"Business owner not found for subscription: {subscription_code}")
+        
+        return Response({'status': 'success'})
+        
+    except Exception as e:
+        logger.error(f"Webhook processing error: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET','POST'])
+@permission_classes([AllowAny])
+def verify_payment(request):
+    """Verify payment status (for callback) with robust anti-fraud and idempotency logic"""
+    try:
+        if request.method == 'POST':
+            reference = request.data.get('reference')
+        elif request.method == 'GET':
+            reference = request.GET.get('reference')
+        else:
+            return Response({'error': 'Invalid method'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        if not reference:
+            return Response({'error': 'Reference is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if this reference has already been processed
+        if PaymentTransaction.objects.filter(reference=reference, status='success').exists():
+            return Response({'status': 'already_processed', 'message': 'This payment reference has already been processed.'})
+
+        # Verify with Paystack
+        headers = {
+            'Authorization': f'Bearer {PAYSTACK_SECRET_KEY}',
+            'Content-Type': 'application/json'
+        }
+        response = requests.get(
+            f'https://api.paystack.co/transaction/verify/{reference}',
+            headers=headers
+        )
+
+        if response.status_code != 200:
+            return Response({'error': 'Failed to verify payment with Paystack'}, status=status.HTTP_400_BAD_REQUEST)
+        verification_data = response.json()
+        print("PAYSTACK VERIFICATION FROM REFERENCE SENT")
+        print(verification_data)
+
+        paystack_status = verification_data['data']['status']
+        metadata = verification_data['data'].get('metadata', {})
+        email = metadata.get('email') or verification_data['data'].get('customer', {}).get('email')
+        plan_type = metadata.get('plan_type')
+        signup_token = metadata.get('signup_token')
+        business_owner_id = metadata.get('business_owner_id')
+        is_renewal = metadata.get('is_renewal', False)
+        amount = verification_data['data'].get('amount')
+        # Default transaction_type
+        transaction_type = 'renewal' if is_renewal else 'signup'
+        user = None
+        signup_token_obj = None
+        # Only process if successful
+
+        if not email:
+            return Response({'error': 'No email found in payment metadata or customer info. Cannot create signup token. Contact Admin to rectify if you feel this is an error'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if paystack_status == 'success':
+            if is_renewal and business_owner_id:
+                try:
+                    user = BusinessOwner.objects.get(id=business_owner_id)
+                    duration_days = 365 if plan_type == 'yearly' else 30
+                    user.activate_subscription(duration_days=duration_days, plan_type=plan_type)
+                    user.last_payment_reference = reference
+                    user.last_payment_date = timezone.now()
+                    user.save()
+                    send_payment_confirmation_email(user)
+                except BusinessOwner.DoesNotExist:
+                    return Response({'error': 'Business owner not found'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            elif signup_token:
+                try:
+                    signup_token_obj = SignupToken.objects.get(token=signup_token, email=email)
+                    
+                    if signup_token_obj.is_used:
+                        return Response({'error': 'Signup token already used to create account '}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    if signup_token_obj : 
+                        return Response({
+                            "error":"A token has previously been generated ...consult admin if your email was not delivered to your inbox"
+                        }, status = status.HTTP_400_BAD_REQUEST)
+                    
+                except SignupToken.DoesNotExist:
+                    
+                    duration_days = metadata.get('duration_days', 30)
+
+                    signup_token_obj = SignupToken.objects.create(token=signup_token, email=email,duration_days=duration_days)
+                    signup_token_obj.save()
+                    
+                    # Record transaction
+                    PaymentTransaction.objects.create(
+                        reference=reference,
+                        email=email,
+                        amount=amount,
+                        status='success',
+                        transaction_type=transaction_type,
+                        metadata=metadata,
+                        signup_token=signup_token_obj
+                    )
+
+                    # send email to user
+                    send_signup_token_email(email, signup_token, duration_days)
+                    return Response({'error': 'Signup token and link to create your account has successfully been generated for you.. check your email otherwise confirm from admin'}, status=status.HTTP_201_CREATED)
+
+            else:
+                # No valid action found
+                print("NO SIGNUP TOKEN FOUND even though PAYMENT WAS SUCCESSFULL")
+                duration_days = metadata.get('duration_days', 30)
+
+                signup_token_obj = SignupToken.objects.create(email=email,duration_days=duration_days)
+                signup_token_obj.save()
+                
+                # Record transaction
+                PaymentTransaction.objects.create(
+                    reference=reference,
+                    email=email,
+                    amount=amount,
+                    status='success',
+                    transaction_type=transaction_type,
+                    metadata=metadata,
+                    signup_token=signup_token_obj
+                )
+
+                # send email to user
+                send_signup_token_email(email, signup_token_obj.token, duration_days)
+                return Response({'error': 'Signup token Generated and link to create your account has successfully been sent to your mail.. Having issue with your mail get details from admin based off email you used during subscription'}, status=status.HTTP_201_CREATED)
+
+        else:
+            # Record failed transaction
+            PaymentTransaction.objects.create(
+                reference=reference,
+                email=email,
+                #user=user,
+                amount=amount,
+                status=paystack_status,
+                transaction_type=transaction_type,
+                metadata=metadata,
+                signup_token=signup_token_obj
+            )
+            return Response({'status': 'failed', 'message': 'Payment verification failed.'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PaystackWebhook2(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    def post(self, request):
+        try:
+            if not verify_paystack_webhook(request):
+                return Response({'error': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
+            webhook_data = json.loads(request.body)
+            event = webhook_data.get('event')
+            data = webhook_data.get('data', {})
+            if event == 'charge.success':
+                reference = data.get('reference')
+                metadata = data.get('metadata', {})
+                email = metadata.get('email')
+                plan_type = metadata.get('plan_type')
+                signup_token = metadata.get('signup_token')
+                business_owner_id = metadata.get('business_owner_id')
+                is_renewal = metadata.get('is_renewal', False)
+                amount = data.get('amount')
+                transaction_type = 'renewal' if is_renewal else 'signup'
+                user = None
+                signup_token_obj = None
+                # Idempotency check
+                if PaymentTransaction.objects.filter(reference=reference, status='success').exists():
+                    return Response({'status': 'already_processed', 'message': 'This payment reference has already been processed.'})
+                if is_renewal and business_owner_id:
+                    try:
+                        user = BusinessOwner.objects.get(id=business_owner_id)
+                        duration_days = 365 if plan_type == 'yearly' else 30
+                        user.activate_subscription(duration_days=duration_days, plan_type=plan_type)
+                        user.last_payment_reference = reference
+                        user.last_payment_date = timezone.now()
+                        user.save()
+                        send_payment_confirmation_email(user)
+                    except BusinessOwner.DoesNotExist:
+                        return Response({'error': 'Business owner not found'}, status=status.HTTP_400_BAD_REQUEST)
+                elif signup_token:
+                    try:
+                        signup_token_obj = SignupToken.objects.get(token=signup_token, email=email)
+                        if signup_token_obj.is_used:
+                            return Response({'error': 'Signup token already used'}, status=status.HTTP_400_BAD_REQUEST)
+                        signup_token_obj.is_used = True
+                        signup_token_obj.save()
+                        duration_days = metadata.get('duration_days', 30)
+                        send_signup_token_email(email, signup_token, duration_days)
+                    except SignupToken.DoesNotExist:
+                        return Response({'error': 'Signup token not found'}, status=status.HTTP_400_BAD_REQUEST)
+                PaymentTransaction.objects.create(
+                    reference=reference,
+                    email=email,
+                    user=user,
+                    amount=amount,
+                    status='success',
+                    transaction_type=transaction_type,
+                    metadata=metadata,
+                    signup_token=signup_token_obj
+                )
+                return Response({'status': 'success', 'message': 'Webhook payment processed.'})
+            else:
+                # Record non-successful or other event
+                PaymentTransaction.objects.create(
+                    reference=data.get('reference', ''),
+                    email=data.get('customer', {}).get('email', ''),
+                    user=None,
+                    amount=data.get('amount'),
+                    status=event,
+                    transaction_type='webhook',
+                    metadata=data,
+                    signup_token=None
+                )
+                return Response({'status': 'ignored', 'message': 'Event not charge.success'})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

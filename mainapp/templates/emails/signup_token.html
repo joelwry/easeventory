@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to EasyBook</title>
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f8fafc;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+        .plan-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #2563eb;
+        }
+        .optional_div_button{    
+            text-align: center;
+            background: deepskyblue;
+            padding: 5px;
+            border-radius: 20px;
+            color: white;
+            filter: drop-shadow(2px 4px 6px rgba(12,12,1,0.3));
+            margin: 5px;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Welcome to EasyBook!</h1>
+        <p>Complete Your Business Registration</p>
+    </div>
+    
+    <div class="content">
+        <h2>Hello!</h2>
+        
+        <p>Thank you for choosing EasyBook for your inventory management needs. Your payment has been confirmed and we're excited to have you on board!</p>
+        
+        <div class="plan-info">
+            <h3>Your Subscription Plan</h3>
+            <p><strong>Plan Type:</strong> {{ plan_type }}</p>
+            {% if duration_days %}
+            <p><strong>Duration:</strong> {{ duration_days }} days</p>
+            {% endif %}
+        </div>
+        
+        <p>To complete your registration and access your EasyBook dashboard, please click the button below:</p>
+        
+        <div style="text-align: center;">
+            <a href="{{ signup_url }}" class="button">Complete Registration</a>
+        </div>
+        
+        <p><strong>Important:</strong> This link will expire in 7 days for security reasons. If you need a new link, please contact our support team.</p>
+        
+        <h3>What's Next?</h3>
+        <ol>
+            <li>Click the "Complete Registration" button above</li>
+            <li>Fill in your business details</li>
+            <li>Create your account password</li>
+            <li>Start managing your inventory!</li>
+        </ol>
+        
+        <h3>Need Help?</h3>
+        <p>If you have any questions or need assistance, please don't hesitate to contact our support team:</p>
+        <ul>
+            <li>Email: support@easybook.com.ng</li>
+            <li>Phone: +234 9032924589</li>
+        </ul>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; 2025 EasyBook Inventory Management. All rights reserved.</p>
+        <p>This email was sent to {{ email }}. If you didn't request this, please ignore this email.</p>
+    </div>
+</body>
+</html> 

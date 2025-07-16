@@ -27,6 +27,20 @@ class BusinessOwner(AbstractUser):
     business_name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=20)
     address = models.TextField(blank=True)
+    
+    # Paystack payment tracking
+    paystack_customer_code = models.CharField(max_length=100, null=True, blank=True)
+    paystack_subscription_code = models.CharField(max_length=100, null=True, blank=True)
+    last_payment_reference = models.CharField(max_length=100, null=True, blank=True)
+    last_payment_date = models.DateTimeField(null=True, blank=True)
+    subscription_plan = models.CharField(
+        max_length=20,
+        choices=[
+            ('monthly', 'Monthly'),
+            ('yearly', 'Yearly'),
+        ],
+        null=True, blank=True
+    )
 
     groups = models.ManyToManyField(
         'auth.Group',
@@ -47,7 +61,6 @@ class BusinessOwner(AbstractUser):
         verbose_name = 'Business Owner'
         verbose_name_plural = 'Business Owners'
 
-
     def __str__(self):
         return f"{self.business_name} ({self.email})"
 
@@ -58,11 +71,12 @@ class BusinessOwner(AbstractUser):
         self.save()
         return token
 
-    def activate_subscription(self, duration_days=30):
+    def activate_subscription(self, duration_days=30, plan_type='monthly'):
         """Activate subscription for the business owner"""
         self.subscription_status = 'active'
         self.subscription_start_date = timezone.now()
         self.subscription_end_date = timezone.now() + timezone.timedelta(days=duration_days)
+        self.subscription_plan = plan_type
         self.save()
 
     @property
@@ -71,6 +85,13 @@ class BusinessOwner(AbstractUser):
         if not self.subscription_end_date:
             return False
         return self.subscription_status == 'active' and timezone.now() <= self.subscription_end_date
+
+    def get_subscription_days_remaining(self):
+        """Get days remaining in subscription"""
+        if not self.subscription_end_date:
+            return 0
+        remaining = self.subscription_end_date - timezone.now()
+        return max(0, remaining.days)
 
 class Category(models.Model):
     """Model for product categories"""
@@ -233,3 +254,22 @@ class SignupToken(models.Model):
         except cls.DoesNotExist:
             pass
         return None
+
+class PaymentTransaction(models.Model):
+    reference = models.CharField(max_length=100, unique=True)
+    email = models.EmailField()  # For signups, before user exists
+    user = models.ForeignKey(
+        'BusinessOwner', on_delete=models.SET_NULL, null=True, blank=True
+    )
+    amount = models.PositiveIntegerField()
+    status = models.CharField(max_length=20)  # e.g., 'success', 'failed', 'pending'
+    transaction_type = models.CharField(max_length=20)  # 'signup' or 'renewal'
+    metadata = models.JSONField(null=True, blank=True)
+    processed_at = models.DateTimeField(auto_now_add=True)
+    signup_token = models.ForeignKey(
+        'SignupToken', on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+    def __str__(self):
+        return f"{self.reference} ({self.status})"
+
