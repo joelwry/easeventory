@@ -7,7 +7,7 @@ from .views import (
     category_list_count,
     add_inventory_item, update_inventory_item, delete_inventory_item, adjust_stock, inventory_stats,
     analytics_data, export_sales_csv, export_inventory_csv,
-    initialize_payment, initialize_renewal_payment, paystack_webhook, verify_payment, PaystackWebhook2
+    initialize_payment, initialize_renewal_payment, verify_payment, PaystackWebhook2,  PaystackWebhookAPIView, 
 )
 from . import views
 from django.contrib.auth.views import LogoutView
@@ -32,8 +32,6 @@ urlpatterns = [
     path('customers/list/', customer_list_api, name='customer-list'),
     path('customers/<int:customer_id>/', customer_detail_api, name='customer-detail'),
     path('category/list-count/', category_list_count, name='category-list-count'),
-    #path('categories/list/', category_list_api, name='category-list'),
-    #path('categories/<int:category_id>/', category_detail_api, name='category-detail'),
     path('auth/signup/', views.signup_api, name='signup-api'),
     path('auth/login/', views.login_api, name='login-api'),
     path('api-token-auth/', obtain_auth_token, name='api_token_auth'),
@@ -44,10 +42,18 @@ urlpatterns = [
     # Payment API endpoints
     path('payment/initialize/', initialize_payment, name='initialize_payment'),
     path('payment/renewal/', initialize_renewal_payment, name='initialize_renewal_payment'),
-    path('payment/webhook/', paystack_webhook, name='paystack_webhook'),
+    path('webhooks/paystack/', PaystackWebhookAPIView.as_view(), name='paystack-webhook'),
     path('payment/verify/', verify_payment, name='verify_payment'),
+    path('payment/verify-renewal/', views.verify_renewal_payment, name='verify_renewal_payment'),
+    path('test-auth/', views.test_auth_endpoint, name='test_auth_endpoint'),
+    path('subscription/cancel/', views.cancel_subscription, name='cancel-subscription'),
+    path('payment/status/', views.check_payment_status, name='check-payment-status'),
 ]
-
+# /api/v1/webhooks/paystack/
+'''
+    Not needed nnow
 urlpatterns += [
     path('paystack/webhook2/', PaystackWebhook2.as_view(), name='paystack_webhook2'),
 ]
+'''
+

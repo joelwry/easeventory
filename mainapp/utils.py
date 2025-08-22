@@ -159,6 +159,7 @@ def send_welcome_email(business_owner):
         print(f"Failed to send welcome email: {e}")
         return False
 
+
 # Paystack webhook verification
 def verify_paystack_webhook(request):
     """Verify Paystack webhook signature"""

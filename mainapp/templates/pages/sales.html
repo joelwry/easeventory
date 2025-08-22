@@ -158,7 +158,7 @@
                         <h4 class="mb-0 text-primary" id="cartTotal">₦0.00</h4>
                         </div>
                     <div class="d-grid mb-2">
-                        <button class="btn btn-success" onclick="completeSale()" id="completeSaleBtn">
+                        <button class="btn btn-success" onclick="handleCompleteSaleClick()" id="completeSaleBtn">
                             <i class="fas fa-check me-2"></i>Complete Sale
                         </button>
                     </div>
@@ -310,6 +310,10 @@
         loadProducts();
         loadCustomers();
         setupEventListeners();
+        // On page load, ensure button is disabled if cart is empty
+        if (cart.length === 0 && document.getElementById('completeSaleBtn')) {
+            document.getElementById('completeSaleBtn').disabled = true;
+        }
     });
 
     async function loadCategories() {
@@ -424,6 +428,7 @@
     function clearCart() {
         cart = [];
         renderCart();
+        if (document.getElementById('completeSaleBtn')) document.getElementById('completeSaleBtn').disabled = true;
     }
 
     async function loadCustomers() {
@@ -540,7 +545,7 @@
             showToast('Error loading sale details', 'error');
         }
     }
-
+    
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -637,6 +642,18 @@
         });
         const tax = subtotal * 0.075;
         return subtotal + tax;
+    }
+
+    // Replace the button's onclick with this handler
+    function handleCompleteSaleClick() {
+        if (cart.length === 0) {
+            showToast('Add items to the cart before completing a sale.', 'warning');
+            return;
+        }
+        // Show confirmation dialog
+        if (confirm('Are you sure you want to complete this sale?')) {
+            completeSale();
+        }
     }
 </script>
 {% endblock %}

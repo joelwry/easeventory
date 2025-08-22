@@ -78,6 +78,9 @@ class BusinessOwnerAdmin(admin.ModelAdmin):
         return [
             (None, {"fields": ("business_name", "email", "subscription_status", "subscription_start_date", "subscription_end_date", "subscription_token")}),
             ("Contact Info", {"fields": ("phone_number", "address")}),
+            ("Subscription Details", {
+                "fields" : ('paystack_customer_code','paystack_subscription_code','last_payment_reference','last_payment_date','subscription_plan')
+            }),
             ("Timestamps", {"fields": ("created_at", "updated_at")}),
         ]
 

@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-s(g38+@vc#ka%v72#$t++p3vej
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost,easybook.com.ng,192.168.43.10').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -180,6 +180,7 @@ PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY', 'pk_test_...')
 PAYSTACK_PLANS = {
     'monthly': os.getenv('PAYSTACK_MONTHLY_PLAN', 'PLN_monthly_plan_code'),
     'yearly': os.getenv('PAYSTACK_YEARLY_PLAN', 'PLN_yearly_plan_code'),
+    'hourly': os.getenv("PAYSTACK_HOURLY_PLAN")
 }
 
 # Subscription Amounts (in kobo)

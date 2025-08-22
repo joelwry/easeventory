@@ -1,0 +1,243 @@
+{% extends 'pages/base.html' %}
+{% load static %}
+
+{% block title %}Verify Payment - EasyBook{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="verify-card">
+        <h1>Verifying Your Payment...</h1>
+        <p id="statusMessage" class="message info">Please wait while we confirm your payment status.</p>
+        <div class="loading-spinner" id="loadingSpinner"></div>
+
+        <div id="manualVerificationForm" style="display: none;">
+            <p>If your payment status isn't updated automatically, you can manually verify it using your Paystack transaction reference.</p>
+            <div class="form-group">
+                <label for="paymentReference">Paystack Reference:</label>
+                <input type="text" id="paymentReference" placeholder="e.g., TXXXXXXXXXX">
+            </div>
+            <button id="verifyButton" class="btn btn-primary">Verify Payment</button>
+            <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--secondary-color);">You can find your reference in the payment confirmation email from Paystack.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .verify-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1);
+        padding: 3rem;
+        text-align: center;
+        max-width: 500px;
+        width: 100%;
+        margin: 2rem auto;
+        animation: fadeInScale 0.7s ease-out forwards;
+    }
+
+    .verify-card h1 {
+        font-size: 2.2rem;
+        color: var(--heading-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .verify-card p {
+        font-size: 1rem;
+        color: var(--secondary-color);
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+
+    .message {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        display: none; /* Hidden by default */
+    }
+    .message.success {
+        background-color: #d1fae5; /* Green-100 */
+        color: var(--success-color);
+        border: 1px solid var(--success-color);
+        display: block;
+    }
+    .message.error {
+        background-color: #fee2e2; /* Red-100 */
+        color: var(--danger-color);
+        border: 1px solid var(--danger-color);
+        display: block;
+    }
+    .message.info {
+        background-color: #e0f2fe; /* Blue-100 */
+        color: var(--primary-color);
+        border: 1px solid var(--primary-color);
+        display: block;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+        text-align: left;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+    .form-group input[type="text"] {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        border: 2px solid var(--background-dark);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .form-group input[type="text"]:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .loading-spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 2rem auto;
+        display: none; /* Hidden by default */
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeInScale {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    @media (max-width: 768px) {
+        .verify-card {
+            padding: 2rem;
+        }
+        .verify-card h1 {
+            font-size: 1.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const statusMessage = document.getElementById('statusMessage');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const manualVerificationForm = document.getElementById('manualVerificationForm');
+    const paymentReferenceInput = document.getElementById('paymentReference');
+    const verifyButton = document.getElementById('verifyButton');
+
+    // Helper to get CSRF token for Django AJAX calls
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showMessage(type, message) {
+        statusMessage.className = `message ${type}`;
+        statusMessage.textContent = message;
+        statusMessage.style.display = 'block';
+    }
+
+    function showLoading(show) {
+        loadingSpinner.style.display = show ? 'block' : 'none';
+        statusMessage.style.display = show ? 'block' : 'none'; // Keep message visible during loading
+        if (show) {
+            statusMessage.className = 'message info';
+            statusMessage.textContent = 'Verifying your payment...';
+        }
+    }
+
+    function showManualForm(show) {
+        manualVerificationForm.style.display = show ? 'block' : 'none';
+    }
+
+    async function verifyPayment(reference) {
+        showLoading(true);
+        showManualForm(false); // Hide form while auto-verifying
+
+        try {
+            const response = await fetch('/api/v1/payment/verify-renewal/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ reference: reference })
+            });
+
+            const data = await response.json();
+            console.log('Verification response:', data);
+            
+            if (response.ok && data.status === 'success') {
+                showMessage('success', 'Payment verified successfully! Redirecting...');
+                // Redirect to the renewal success page
+                setTimeout(() => {
+                    window.location.href = data.redirect_url || '/renewal-subscription-success/';
+                }, 2000);
+            } else {
+                showMessage('error', data.message || data.error || 'Payment verification failed. Please try again or enter your reference manually.');
+                showManualForm(true); // Show manual form if auto-verification fails
+            }
+        } catch (error) {
+            console.error('Error during payment verification:', error);
+            showMessage('error', 'An error occurred during verification. Please try again or enter your reference manually.');
+            showManualForm(true); // Show manual form on network/server error
+        } finally {
+            showLoading(false);
+        }
+    
+    }
+
+    // On page load
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const reference = urlParams.get('reference');
+
+        if (reference) {
+            // Automatically verify if reference is in URL
+            verifyPayment(reference);
+        } else {
+            // Show manual form if no reference
+            showLoading(false);
+            showMessage('info', 'Please enter your Paystack transaction reference to verify your payment.');
+            showManualForm(true);
+        }
+    });
+
+    // Event listener for manual verification button
+    verifyButton.addEventListener('click', () => {
+        
+        const reference = paymentReferenceInput.value.trim();
+
+        if (reference) {
+            verifyPayment(reference);
+        } else {
+            showMessage('error', 'Please enter a valid Paystack reference.');
+        }
+
+    });
+</script>
+{% endblock %}

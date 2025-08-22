@@ -201,7 +201,7 @@
             align-items: center;
             gap: 1rem;
         }
-
+        
         .whatsapp-link {
             display: flex;
             align-items: center;
@@ -260,7 +260,7 @@
             margin-right: auto;
             opacity: 0.9;
         }
-
+        
         .hero .cta-btn {
             background: white;
             color: var(--primary-color);
@@ -503,7 +503,7 @@
             min-height: 480px;
             /* Ensure similar heights */
         }
-
+        
         .pricing-card.popular {
             transform: scale(1.05);
             border: 3px solid var(--primary-color);
@@ -521,7 +521,7 @@
             margin-bottom: 1rem;
             font-weight: 800;
         }
-
+        
         .pricing-card .tag {
             background: var(--primary-color);
             color: white;
@@ -574,7 +574,7 @@
             padding: 0.9rem 2rem;
             margin-top: 2rem;
         }
-
+        
         /* CTA Section */
         .call-to-action {
             background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
@@ -693,7 +693,7 @@
             transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.4s ease-out;
             /* Zoom & Fade transition */
         }
-
+        
         .modal.show .modal-content {
             transform: scale(1);
             opacity: 1;
@@ -1074,7 +1074,7 @@
                 </div>
             </div>
             <div class="slider-dots">
-            </div>
+                </div>
         </div>
     </section>
 
@@ -1117,6 +1117,22 @@
                         </ul>
                     </div>
                     <button class="btn btn-primary" onclick="openPaymentModal('yearly')">Subscribe Yearly</button>
+                </div>
+
+                 <div class="pricing-card">
+                    <div>
+                        <h3>Hourly Plan</h3>
+                        <div class="price">₦{{ hourly_amount|floatformat:0 }}<small>/hour</small></div>
+                        <ul>
+                            <li><i class="fas fa-check-circle"></i> Real-time Inventory Tracking</li>
+                            <li><i class="fas fa-check-circle"></i> Unlimited Products & Categories</li>
+                            <li><i class="fas fa-check-circle"></i> Sales & Reports Dashboard</li>
+                            <li><i class="fas fa-check-circle"></i> Basic Customer Management</li>
+                            <li><i class="fas fa-check-circle"></i> Up to 1 Staff Accounts</li>
+                            <li><i class="fas fa-check-circle"></i> Email Support</li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-primary" onclick="openPaymentModal('hourly')">Get hourl Plan</button>
                 </div>
             </div>
         </div>
@@ -1183,6 +1199,7 @@
         let currentPlan = '';
         const monthlyPlan = "{{ paystack_plans.monthly }}";
         const yearlyPlan = "{{ paystack_plans.yearly }}";
+        const hourlyPlan = "{{ paystack_plans.hourly }}";
 
 
         function openPaymentModal(plan) {
@@ -1198,7 +1215,7 @@
         function closePaymentModal() {
             paymentModal.classList.remove('show');
             paymentModal.classList.add('hide'); // Trigger hide animation
-
+            
             // Wait for the animation to complete before hiding display
             paymentModal.addEventListener('transitionend', function handler() {
                 paymentModal.style.display = 'none';
@@ -1218,7 +1235,7 @@
                 return;
             }
 
-            // 1. Call your backend API to initialize the payment
+            // 1. Calling our backend API to initialize the payment
             fetch('/api/v1/payment/initialize/', { // Adjust this URL to your actual API endpoint
                 method: 'POST',
                 headers: {
@@ -1242,8 +1259,8 @@
                     const authorizationUrl = data.authorization_url;
                     const reference = data.reference;
                     const signupToken = data.signup_token; // If you need this on the 
-                    
                     const amountInKobo = data.amount; 
+                    console.log(`Amount to be charged NGN${amountInKobo}`);
                     const paystackPlanCode = data.plan_code;
                     const handler = PaystackPop.setup({
                         key: '{{ paystack_public_key }}', // Your public key
@@ -1258,7 +1275,9 @@
                         callback: function (response) {
                             // This callback fires when the payment is successful
                             // Redirect to your verify page with the reference
-                            window.location.href = `/payment/verify/unauth?reference=${response.reference}`;
+                            // window.location.href = `/payment/verify/unauth?reference=${response.reference}&initial_reference=${reference}`;
+                            
+                            window.location.href = `/payment/confirming/?reference=${response.reference}&initial_reference=${reference}`;
                         },
                         onClose: function () {
                             // Called if the user closes the modal without completing payment
@@ -1275,8 +1294,6 @@
             closePaymentModal(); // Close your custom email modal
         });
 
-       
-
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -1292,7 +1309,7 @@
             }
             return cookieValue;
         }
-        
+
         // Close modal when clicking outside
         window.addEventListener('click', (event) => {
             if (event.target == paymentModal) {
@@ -1334,7 +1351,7 @@
             // Add active to new
             testimonialCards[currentTestimonialIndex].classList.remove('prev'); // Remove prev if it was there
             testimonialCards[currentTestimonialIndex].classList.add('active');
-
+            
             // Update dots
             sliderDotsContainer.children[currentTestimonialIndex].classList.add('active');
         }

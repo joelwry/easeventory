@@ -39,7 +39,7 @@ def signup(request, token):
     })
 
 # ✅ Payment success handler
-@login_required
+@login_required(login_url='/login')
 def payment_success(request):
     business_owner = request.user
     plan_type = request.GET.get('plan', 'yearly')
@@ -211,8 +211,13 @@ def reports(request):
 
 @login_required(login_url="/login")
 def subscription(request):
+    from django.conf import settings
+    monthly_amount = settings.MONTHLY_SUBSCRIPTION_AMOUNT / 100
+    yearly_amount = settings.YEARLY_SUBSCRIPTION_AMOUNT / 100
+    paystack_public_key = settings.PAYSTACK_PUBLIC_KEY
+    paystack_plans = settings.PAYSTACK_PLANS
+
     business_owner = request.user
-    
     # Determine subscription status based on actual model fields
     is_active = business_owner.is_subscription_active
     plan_type = 'Premium' if is_active else 'Free'
@@ -242,7 +247,11 @@ def subscription(request):
                 'advanced_reports': is_active,
                 'multiple_users': is_active
             }
-        }
+        },
+        'monthly_amount': monthly_amount,
+        'yearly_amount': yearly_amount,
+        'paystack_public_key': paystack_public_key,
+        'paystack_plans': paystack_plans,
     }
     return render(request, 'pages/subscription.html', context)
 
@@ -258,6 +267,7 @@ def landing(request):
         'yearly_amount': yearly_amount,
         'paystack_public_key': settings.PAYSTACK_PUBLIC_KEY,
         'paystack_plans': settings.PAYSTACK_PLANS,
+        'hourly_amount' : 100,
     }
     
     return render(request, 'landing.html', context)
@@ -381,8 +391,15 @@ def subscription_expired(request):
     return render(request, 'pages/subscription_expired.html')
 
 # for payment successfull unauthenticated
-def payment_success_page(request,paymentId):
-    return render(request, 'payment_success_unauth.html')
+def payment_success_unauthenticated(request, token):
+    """
+    Shows a success message after payment and before signup.
+    Instructs the user to check their email for the signup link.
+    """
+    signup_token = get_object_or_404(SignupToken, token=token)
+    return render(request, 'payment_success_unauth.html', {
+        'email': signup_token.email
+    })
 
 def unathenticated_payment_verify_page(request):
     return render(request,"unathenticated_payment_verify.html")
@@ -393,3 +410,22 @@ def renewal_subscription_success_page(request):
     This page informs the user that their subscription has been renewed.
     """
     return render(request, 'pages/renewal_subscription_success.html')
+
+@login_required
+def auth_payment_verify_page(request):
+    """
+    Renders the authenticated payment verification page.
+    This page allows logged-in users to verify their renewal payment.
+    """
+    return render(request, 'pages/auth_payment_verify.html')
+
+# page that waits for webhook confirmation for user
+def payment_confirmation_wait(request):
+    """
+    Renders the page that waits for webhook confirmation after a user pays...
+    """
+    reference = request.GET.get('reference')
+    initial_reference = request.GET.get("initial_reference")
+    if not reference:
+        return redirect('landing')
+    return render(request, 'pages/payment_confirmation_wait.html', {'payment_reference': reference, "initial_reference":initial_reference})

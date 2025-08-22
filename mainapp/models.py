@@ -17,6 +17,7 @@ class BusinessOwner(AbstractUser):
             ('active', 'Active'),
             ('expired', 'Expired'),
             ('pending', 'Pending'),
+            ('cancelled','Cancelled')
         ],
         default='pending'
     )
@@ -81,10 +82,24 @@ class BusinessOwner(AbstractUser):
 
     @property
     def is_subscription_active(self):
-        """Check if subscription is active"""
+        """
+        Check if the user should have access to premium features.
+        This is now the single source of truth for access control.
+        It returns True if the subscription is 'active' or 'cancelled'
+        AND the current date is before the end date.
+        """
+        # A subscription is only valid if it has an end date.
         if not self.subscription_end_date:
             return False
-        return self.subscription_status == 'active' and timezone.now() <= self.subscription_end_date
+        
+        # This automatically handles expirations whenever this property is checked.
+        if timezone.now() > self.subscription_end_date:
+            if self.subscription_status != 'expired':
+                self.subscription_status = 'expired'
+                self.save(update_fields=['subscription_status'])
+            return False
+
+        return self.subscription_status in ['active', 'cancelled']
 
     def get_subscription_days_remaining(self):
         """Get days remaining in subscription"""
@@ -257,19 +272,32 @@ class SignupToken(models.Model):
 
 class PaymentTransaction(models.Model):
     reference = models.CharField(max_length=100, unique=True)
-    email = models.EmailField()  # For signups, before user exists
+    email = models.EmailField() # For signups, before user exists
     user = models.ForeignKey(
-        'BusinessOwner', on_delete=models.SET_NULL, null=True, blank=True
+        'BusinessOwner',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
     )
     amount = models.PositiveIntegerField()
-    status = models.CharField(max_length=20)  # e.g., 'success', 'failed', 'pending'
-    transaction_type = models.CharField(max_length=20)  # 'signup' or 'renewal'
+    status = models.CharField(max_length=20) # e.g., 'success', 'failed', 'pending'
+    transaction_type = models.CharField(max_length=20) # 'signup' or 'renewal'
     metadata = models.JSONField(null=True, blank=True)
     processed_at = models.DateTimeField(auto_now_add=True)
     signup_token = models.ForeignKey(
-        'SignupToken', on_delete=models.SET_NULL, null=True, blank=True
+        'SignupToken',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
     )
-
+    # To temporarily store codes received from the webhook before the user is created.
+    paystack_customer_code = models.CharField(max_length=100, null=True, blank=True)
+    paystack_subscription_code = models.CharField(max_length=100, null=True, blank=True)
+    
     def __str__(self):
         return f"{self.reference} ({self.status})"
-
+    
+    class Meta: 
+        verbose_name = 'Payment Transaction'
+        verbose_name_plural = 'Payment Transactions'
+        ordering = ['-processed_at']

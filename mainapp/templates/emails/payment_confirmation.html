@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Confirmation - EasyBook</title>
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f8fafc;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Payment Confirmed!</h1>
+    </div>
+    
+    <div class="content">
+        <p>Dear {{ business_owner.name }},</p>
+        <p>Thank you for your payment! Your subscription is now active.</p>
+        <p><strong>Subscription End Date:</strong> {{ subscription_end_date }}</p>
+        <p>You have <strong>{{ days_remaining }}</strong> days remaining in your subscription.</p>
+        <p>To access your dashboard, please visit <a href="{{ site_url }}">EasyBook Dashboard</a>.</p>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; 2025 EasyBook Inventory Management. All rights reserved.</p>
+    </div>
+</body>
+</html>

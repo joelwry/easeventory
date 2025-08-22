@@ -189,119 +189,129 @@
         <p id="statusMessage" class="message info">Please wait while we confirm your payment status.</p>
         <div class="loading-spinner" id="loadingSpinner"></div>
 
+        <div id="resultContent" style="display: none;">
+            <div id="resultIcon"></div>
+            <p id="resultMessage"></p>
+            <a href="#" id="resultButton" class="btn btn-primary" style="display: none;"></a>
+        </div>
+        
         <div id="manualVerificationForm" style="display: none;">
-            <p>If your payment status isn't updated automatically, you can manually verify it using your Paystack transaction reference.</p>
+            <p>If verification doesn't happen automatically, please enter your transaction reference below.</p>
             <div class="form-group">
                 <label for="paymentReference">Paystack Reference:</label>
                 <input type="text" id="paymentReference" placeholder="e.g., TXXXXXXXXXX">
             </div>
-            <button id="verifyButton" class="btn btn-primary">Verify Payment</button>
-            <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--secondary-color);">You can find your reference in the payment confirmation email from Paystack.</p>
+            <button id="verifyButton" class="btn btn-primary">Verify Manually</button>
         </div>
     </div>
 
-    <script>
-        const statusMessage = document.getElementById('statusMessage');
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        const manualVerificationForm = document.getElementById('manualVerificationForm');
-        const paymentReferenceInput = document.getElementById('paymentReference');
-        const verifyButton = document.getElementById('verifyButton');
+<script>
+    const statusMessage = document.getElementById('statusMessage');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const manualVerificationForm = document.getElementById('manualVerificationForm');
+    const paymentReferenceInput = document.getElementById('paymentReference');
+    const verifyButton = document.getElementById('verifyButton');
+    const resultCard = document.querySelector('.verify-card');
+    const resultContainer = document.getElementById('resultContent');
+    const resultMessage = document.getElementById('resultMessage');
+    const resultButton = document.getElementById('resultButton');
 
-        // Helper to get CSRF token for Django AJAX calls
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
                 }
             }
-            return cookieValue;
         }
+        return cookieValue;
+    }
 
-        function showMessage(type, message) {
-            statusMessage.className = `message ${type}`;
-            statusMessage.textContent = message;
-            statusMessage.style.display = 'block';
+    function showState(state, message = '', data = {}) {
+        loadingSpinner.style.display = 'none';
+        manualVerificationForm.style.display = 'none';
+        statusMessage.style.display = 'none';
+        resultContainer.style.display = 'block';
+
+        switch (state) {
+            case 'success':
+                resultCard.querySelector('h1').textContent = 'Payment Successful!';
+                resultMessage.textContent = message || 'Your payment has been verified. A signup link has been sent to your email. You can also proceed using the button below.';
+                resultButton.textContent = 'Create Your Account';
+                resultButton.href = `/signup/${data.signup_token}/`;
+                resultButton.style.display = 'inline-flex';
+                break;
+            case 'error':
+                resultCard.querySelector('h1').textContent = 'Verification Failed';
+                resultMessage.innerHTML = `<strong>Error:</strong> ${message}. <br><br>Please check your reference and try again. If the issue persists, contact support.`;
+                resultButton.style.display = 'none';
+                manualVerificationForm.style.display = 'block'; // Show manual form on error
+                break;
+            case 'loading':
+                resultContainer.style.display = 'none';
+                statusMessage.style.display = 'block';
+                loadingSpinner.style.display = 'block';
+                break;
         }
+    }
 
-        function showLoading(show) {
-            loadingSpinner.style.display = show ? 'block' : 'none';
-            statusMessage.style.display = show ? 'block' : 'none'; // Keep message visible during loading
-            if (show) {
-                statusMessage.className = 'message info';
-                statusMessage.textContent = 'Verifying your payment...';
-            }
-        }
+    async function verifyPayment(reference,initial_reference=null) {
+        showState('loading');
+        
+        try {
+            const response = await fetch('/api/v1/payment/verify/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ reference: reference, initial_reference })
+            });
 
-        function showManualForm(show) {
-            manualVerificationForm.style.display = show ? 'block' : 'none';
-        }
+            const data = await response.json();
 
-        async function verifyPayment(reference) {
-            showLoading(true);
-            showManualForm(false); // Hide form while auto-verifying
-
-            try {
-                const response = await fetch('/api/v1/payment/verify/', { // New API endpoint for verification
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken'),
-                    },
-                    body: JSON.stringify({ reference: reference })
-                });
-
-                const data = await response.json();
-                console.log(data)
-                console.log(response)
-                if (response.ok && response.status == 201) {
-                    showMessage('success', 'Payment verified successfully! Redirecting...');
-                    // Redirect to the success page
-                    window.location.href = `/payment/success/${reference}`;
-
-                } else {
-                    showMessage('error', 'Payment verification failed. Please try again or enter your reference manually.');
-                    showManualForm(true); // Show manual form if auto-verification fails
+            // Handle successful responses (e.g., 200 OK)
+            if (response.ok) {
+                if (data.status === 'success' || data.status === 'already_processed') {
+                    showState('success', data.message, data);
                 }
-            } catch (error) {
-                console.error('Error during payment verification:', error);
-                showMessage('error', 'An error occurred during verification. Please try again or enter your reference manually.');
-                showManualForm(true); // Show manual form on network/server error
-            } finally {
-                showLoading(false);
+            } else {
+                // Handle error responses (e.g., 400, 404, 500)
+                const errorMessage = data.error || 'An unknown error occurred.';
+                showState('error', errorMessage);
             }
+
+        } catch (error) {
+            console.error('Network or server error:', error);
+            showState('error', 'A network error occurred. Please check your connection and try again.');
         }
+    }
 
-        // On page load
-        document.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const reference = urlParams.get('reference');
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const reference = urlParams.get('reference');
+        const initial_reference = urlParams.get("initial_reference");
 
-            if (reference) {
-                // Automatically verify if reference is in URL
-                verifyPayment(reference);
-            } else {
-                // Show manual form if no reference
-                showLoading(false);
-                showMessage('info', 'Please enter your Paystack transaction reference to verify your payment.');
-                showManualForm(true);
-            }
-        });
+        if (reference) {
+            verifyPayment(reference,initial_reference);
+        } else {
+            resultCard.querySelector('h1').textContent = 'Verify Your Payment';
+            showState('error', 'No payment reference found.');
+        }
+    });
 
-        // Event listener for manual verification button
-        verifyButton.addEventListener('click', () => {
-            const reference = paymentReferenceInput.value.trim();
-            if (reference) {
-                verifyPayment(reference);
-            } else {
-                showMessage('error', 'Please enter a valid Paystack reference.');
-            }
-        });
-    </script>
+    verifyButton.addEventListener('click', () => {
+        const reference = paymentReferenceInput.value.trim();
+        if (reference) {
+            verifyPayment(reference);
+        } else {
+            alert('Please enter a valid Paystack reference.');
+        }
+    });
+</script>
 </body>
 </html>

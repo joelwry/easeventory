@@ -142,6 +142,17 @@
     </style>
 </head>
 <body>
+    {% block content %}
+<div class="verify-card" style="text-align: center;">
+    <h1><i class="fas fa-check-circle" style="color: #10b981;"></i> Payment Successful!</h1>
+    <p>Your payment was successful. We have sent a confirmation and your unique signup link to:</p>
+    <p><strong>{{ email }}</strong></p>
+    <p>Please check your inbox (or spam folder) to complete your account registration.</p>
+    <a href="{% url 'landing' %}" class="btn btn-primary">Back to Home</a>
+</div>
+
+{% endblock %}
+
     <div class="success-card">
         <div class="icon-wrapper">
             <i class="fas fa-check-circle"></i>
@@ -149,8 +160,9 @@
         <h1>Payment Successful!</h1>
         <p>Thank you for subscribing to EasyBook Inventory Management. Your payment has been processed successfully.</p>
         <p>
-            <strong>Please check your email inbox (and spam folder) for your unique signup link.</strong>
-            This link will allow you to complete your registration and access the application.
+            <p><strong>{{ email }}</strong></p>
+            <p>Please check your inbox (or spam folder) to complete your account registration.</p>
+            The signup link delivered into your inbox will allow you to complete your registration and access your dashboard to start managing your inventory.
         </p>
         <a href="{% url 'landing' %}" class="btn btn-primary">Go to Homepage</a>
         <a href="{% url 'login' %}" class="btn btn-secondary" style="margin-left: 1rem;">Login (if already signed up)</a>
