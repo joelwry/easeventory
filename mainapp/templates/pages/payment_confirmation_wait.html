@@ -30,6 +30,7 @@
     </div>
 
 <script>
+
     const paymentReference = '{{ payment_reference }}';
     const initialReference = '{{ initial_reference }}'
     const statusIcon = document.getElementById('status-icon');
@@ -41,6 +42,8 @@
     const maxAttempts = 10; // Poll for about 30 seconds (10 attempts * 3s interval)
     let pollingInterval;
 
+    alert(`PAYMENT REFERENCE: ${paymentReference}`)
+
     async function checkStatus() {
         attempts++;
         if (attempts > maxAttempts) {
@@ -50,7 +53,7 @@
         }
 
         try {
-            const response = await fetch(`/api/v1/payment/status/?reference=${paymentReference}`);
+            const response = await fetch(`/api/v1/payment/status/?reference=${paymentReference}&initial_reference=${initialReference}`);
             if (!response.ok) {
                 // If the record isn't found yet, just wait for the next poll
                 if (response.status === 404) return; 

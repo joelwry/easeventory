@@ -45,7 +45,6 @@ urlpatterns = [
     path('webhooks/paystack/', PaystackWebhookAPIView.as_view(), name='paystack-webhook'),
     path('payment/verify/', verify_payment, name='verify_payment'),
     path('payment/verify-renewal/', views.verify_renewal_payment, name='verify_renewal_payment'),
-    path('test-auth/', views.test_auth_endpoint, name='test_auth_endpoint'),
     path('subscription/cancel/', views.cancel_subscription, name='cancel-subscription'),
     path('payment/status/', views.check_payment_status, name='check-payment-status'),
 ]

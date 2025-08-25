@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -30,8 +31,16 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-s(g38+@vc#ka%v72#$t++p3vej
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '617ce6bc6418.ngrok-free.app').split(',')
+ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '').split(',') if h.strip()]
+print(f'ALLOWED HOST : {ALLOWED_HOSTS}')
 
+CORS_ALLOWED_ORIGINS = [o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
+
+
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME',None)
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # Application definition
 
@@ -51,6 +60,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -83,7 +93,6 @@ WSGI_APPLICATION = 'project.wsgi.application'
 
 AUTH_USER_MODEL = 'mainapp.BusinessOwner'  # Replace 'accounts' with your app name
 
-
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
@@ -96,17 +105,34 @@ REST_FRAMEWORK = {
     ],
 }
 
+# ===============================
+# Database (Auto-switching)
+# ===============================
+DATABASES = {}
 
-
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+# If Render PostgreSQL is available (DATABASE_URL), use it
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES['default'] = dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
+else:
+    # Try Local PostgreSQL from env variables
+    LOCAL_DB_NAME = os.getenv('LOCAL_DB_NAME')
+    if LOCAL_DB_NAME:
+        DATABASES['default'] = {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': LOCAL_DB_NAME,
+            'USER': os.getenv('LOCAL_DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('LOCAL_DB_PASSWORD', ''),
+            'HOST': os.getenv('LOCAL_DB_HOST', 'localhost'),
+            'PORT': os.getenv('LOCAL_DB_PORT', '5432'),
+        }
+        
+    else:
+        # Fall back to SQLite
+        DATABASES['default'] = {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
 
 
 # Password validation
@@ -127,32 +153,36 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
+# ===============================
+# Static & Media Files
+# ===============================
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     str(BASE_DIR / "mainapp/static"),
 ]
-
-# CORS Settings
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:300').split(',')
-
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# WhiteNoise for compressed static files in production
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / "media"
+
+
+# CORS Settings
+#CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:300').split(',')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
