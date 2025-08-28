@@ -341,6 +341,7 @@
 <!-- Inject initial data from backend -->
 <script type="text/javascript">
     window.initialData = {{ initial_data|safe }}
+    let authTokenFromView = `{{ request.user.auth_token.key }}`
 </script>
 
 <!-- Link external JS file -->

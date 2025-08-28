@@ -7,7 +7,7 @@ from .views import (
     category_list_count,
     add_inventory_item, update_inventory_item, delete_inventory_item, adjust_stock, inventory_stats,
     analytics_data, export_sales_csv, export_inventory_csv,
-    initialize_payment, initialize_renewal_payment, verify_payment, PaystackWebhook2,  PaystackWebhookAPIView, 
+    initialize_payment, initialize_renewal_payment, verify_payment,  PaystackWebhookAPIView, 
 )
 from . import views
 from django.contrib.auth.views import LogoutView
@@ -47,12 +47,10 @@ urlpatterns = [
     path('payment/verify-renewal/', views.verify_renewal_payment, name='verify_renewal_payment'),
     path('subscription/cancel/', views.cancel_subscription, name='cancel-subscription'),
     path('payment/status/', views.check_payment_status, name='check-payment-status'),
+    path("notifications/unread/", views.UnreadNotificationsAPIView.as_view(), name="unread_notifications_api"),
+    path("notifications/<int:pk>/", views.DeleteNotificationAPIView.as_view(), name="delete_notification_api"),
 ]
 # /api/v1/webhooks/paystack/
-'''
-    Not needed nnow
-urlpatterns += [
-    path('paystack/webhook2/', PaystackWebhook2.as_view(), name='paystack_webhook2'),
-]
-'''
+# /api/v1/notifications/unread/     
+# /api/v1/notifications/<int:pk>/    delete/
 

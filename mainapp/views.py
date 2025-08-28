@@ -2,7 +2,7 @@ import json
 from django.shortcuts import get_object_or_404, redirect,render
 
 from inventoryApi.serializers import CategorySerializer
-from .models import InventoryItem, Category,  Customer, BusinessOwner, SignupToken, Sale, SaleItem
+from .models import InventoryItem, Category,  Customer, BusinessOwner, Notification, SignupToken, Sale, SaleItem
 #from .forms import InventoryItemForm, CategoryForm, SaleForm
 
 from django.contrib.auth.decorators import login_required
@@ -386,7 +386,7 @@ def inventory_category_view(request, category_id):
     return render(request, 'pages/inventory_category.html', context)
 
 
-@login_required
+@login_required(login_url="/login")
 def subscription_expired(request):
     return render(request, 'pages/subscription_expired.html')
 
@@ -411,7 +411,7 @@ def renewal_subscription_success_page(request):
     """
     return render(request, 'pages/renewal_subscription_success.html')
 
-@login_required
+@login_required(login_url="/login")
 def auth_payment_verify_page(request):
     """
     Renders the authenticated payment verification page.
@@ -429,3 +429,21 @@ def payment_confirmation_wait(request):
     if not reference:
         return redirect('landing')
     return render(request, 'pages/payment_confirmation_wait.html', {'payment_reference': reference, "initial_reference":initial_reference})
+
+
+# misc 
+@login_required(login_url="/login")
+def notifications_list(request):
+    notifications = Notification.objects.filter(owner=request.user)
+    return render(request, "notifications/list.html", {"notifications": notifications})
+
+@login_required(login_url="/login")
+def mark_as_read(request, pk):
+    notification = get_object_or_404(Notification, pk=pk, owner=request.user)
+    notification.mark_as_read()
+    return redirect("notifications_list")
+
+@login_required(login_url="/login")
+def mark_all_as_read(request):
+    Notification.objects.filter(owner=request.user, is_read=False).delete()
+    return redirect("notifications_list")

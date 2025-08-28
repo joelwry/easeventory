@@ -334,6 +334,7 @@
         current_category: {{ initial_data.current_category|safe }},
         csrf_token: "{{ csrf_token }}"
     };
+    let authTokenFromView = `{{ request.user.auth_token.key }}`
 </script>
 
 <!-- Link external JS file -->

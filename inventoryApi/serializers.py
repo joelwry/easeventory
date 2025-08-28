@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from mainapp.models import Customer, Category, InventoryItem, Sale, BusinessOwner, SaleItem
+from mainapp.models import Customer, Category, InventoryItem, Notification, Sale, BusinessOwner, SaleItem
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -88,3 +88,10 @@ class SaleSerializer(serializers.ModelSerializer):
 
     def get_customer_name(self, obj):
         return f"{obj.customer.first_name} {obj.customer.last_name}"
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ["id", "title", "message", "created_at"]
+        

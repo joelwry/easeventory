@@ -234,7 +234,7 @@ class CategoryInventoryManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 },
                 body: JSON.stringify(data)
@@ -291,7 +291,7 @@ class CategoryInventoryManager {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 },
                 body: JSON.stringify(data)
@@ -322,7 +322,7 @@ class CategoryInventoryManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 },
                 body: JSON.stringify({ quantity_change: finalChange })
@@ -348,7 +348,7 @@ class CategoryInventoryManager {
             const response = await fetch(`/api/v1/inventory/${itemId}/delete/`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });
@@ -420,7 +420,7 @@ class CategoryInventoryManager {
         try {
             const response = await fetch(`/api/v1/inventory/category/${this.currentCategory.id}/list/`, {
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });

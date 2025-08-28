@@ -301,3 +301,23 @@ class PaymentTransaction(models.Model):
         verbose_name = 'Payment Transaction'
         verbose_name_plural = 'Payment Transactions'
         ordering = ['-processed_at']
+
+
+class Notification(models.Model):
+    owner = models.ForeignKey(BusinessOwner, on_delete=models.CASCADE, related_name="notifications")
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def mark_as_read(self):
+        self.is_read = True
+        self.save()
+        # Auto-delete after being marked as read
+        self.delete()
+
+    def __str__(self):
+        return f"Notification({self.owner.email}, {self.title})"

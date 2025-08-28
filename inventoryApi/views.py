@@ -6,12 +6,12 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticate
 from rest_framework.decorators import api_view, permission_classes, authentication_classes, action
 from rest_framework.authentication import TokenAuthentication
 from django.views.decorators.csrf import csrf_exempt
-from .serializers import InventoryItemSerializer, SaleSerializer, CustomerSerializer, CategorySerializer, UserSerializer
+from .serializers import InventoryItemSerializer, NotificationSerializer, SaleSerializer, CustomerSerializer, CategorySerializer, UserSerializer
 from django.http import HttpResponseBadRequest, JsonResponse, HttpResponse
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate,login
 from django.contrib.auth.models import User
-from mainapp.models import Customer, SaleItem, SignupToken, BusinessOwner
+from mainapp.models import Customer, Notification, SaleItem, SignupToken, BusinessOwner
 from mainapp.models import InventoryItem,Sale
 from django.db.models import F, Sum
 from mainapp.models import Category
@@ -744,13 +744,14 @@ def verify_payment(request):
     """
     reference = request.data.get('reference')
     initial_reference = request.data.get("initial_reference")
-  
-    if not reference or initial_reference:
+    
+    print(f'CALLING MANUAL PAYMENT VERIFICATION {reference} / {initial_reference}')
+
+    if not reference:
         return Response({'error': 'Reference is required'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         # Step 1: Find the pending transaction created during initialization.
-        transaction = PaymentTransaction.objects.get(reference=initial_reference, status='pending')
         
         transaction = PaymentTransaction.objects.filter(
             Q(reference=reference) | Q(reference=initial_reference)
@@ -782,7 +783,7 @@ def verify_payment(request):
 
         print('VERFICATION DATA FOR PAYMENT')
         print(verification_data)
-        
+        print('With this verification data we should be able to get auth and subscription code if truly returned during the verification')    
         # Step 3: Check if Paystack confirms the payment was successful.
         if verification_data['status'] == 'success':
             # Update the transaction record with success status and codes.
@@ -999,47 +1000,38 @@ def cancel_subscription(request):
 class PaystackWebhookAPIView(APIView):
     """
     Handles incoming webhooks from Paystack.
-    Updates PaymentTransaction with real subscription + customer data.
+    Updates PaymentTransaction and BusinessOwner models.
     """
     permission_classes = [AllowAny]
 
     @csrf_exempt
     def post(self, request, *args, **kwargs):
-        print("Webhook endpoint hit!")
-        print(f"Headers: {dict(request.headers)}")
-        print(f"Body: {request.body.decode()}")
-
-        # 1️⃣ Verify webhook
+        # 1️⃣ Verify webhook signature
         if not verify_paystack_webhook(request):
-            print("❌ Paystack webhook verification failed.")
             return Response({'status': 'error', 'message': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
 
-        print('✅ PASSED WEBHOOK VERIFICATION')
         payload = request.data
         event = payload.get('event')
         data = payload.get('data', {})
 
-        print(f"Received Paystack webhook event: {event}")
-
+        print('WEBHOOK CALLED')
+        print(event)
         try:
-            # 2️⃣ Handle charge.success (successful transaction)
-            '''
-             This works both for renewal or when the subscription charge was successful
-            '''
+            # --- Event: Payment Success ---
             if event == 'charge.success':
-                paystack_reference : str = data.get('reference')
+                reference = data.get('reference')
                 email = data.get('customer', {}).get('email')
                 customer_code = data.get('customer', {}).get('customer_code')
 
-                # Look up our pending PaymentTransaction
+                # Find latest transaction for this email
                 transaction = PaymentTransaction.objects.filter(
-                    email=email,
+                    email=email
                 ).order_by('-processed_at').first()
-
-                if transaction and transaction.status == 'pending':
+                
+                if transaction and transaction.status == 'pending' and not transaction.user :
                     transaction.status = 'success'
                     transaction.paystack_customer_code = customer_code
-                    transaction.reference = paystack_reference
+                    transaction.reference = reference
                     transaction.metadata = {
                         **(transaction.metadata or {}),
                         "paystack_transaction_id": data.get('id'),
@@ -1061,19 +1053,53 @@ class PaystackWebhookAPIView(APIView):
                         )
                         print(f"📧 Signup email sent to {transaction.email}")
 
-                # else if transacton.success can be in 2 ways now 
-                elif transaction and transaction.status == 'success':
-                    # we might be referencing a renewal done on paystack end automatically hence we need to update the user detail 
-                    # we can also send renewal email success etc
-            # 3️⃣ Handle subscription.create (Paystack assigns subscription_code & email_token)
+                    # else if transacton.success can be in 2 ways now 
+                    elif transaction and transaction.status == 'success':
+                        # we might be referencing a renewal done on paystack end automatically hence we need to update the user subscription detail 
+                        pass
+                
+                # WE assume this will be for renewal
+                elif transaction and transaction.user is not None:
+                    transaction.status = 'success'
+                    transaction.reference = reference
+                    transaction.paystack_customer_code = customer_code
+                    transaction.metadata = {
+                        **(transaction.metadata or {}),
+                        "paystack_transaction_id": data.get('id'),
+                        "plan_code": data.get('plan'),
+                        "amount": data.get('amount'),
+                        "paid_at": data.get('paid_at'),
+                    }
+                    transaction.save()
+
+                    # Update BusinessOwner (renewal)
+                    owner = transaction.user or BusinessOwner.objects.filter(email=email).first()
+                    if owner:
+                        owner.paystack_customer_code = customer_code
+                        owner.last_payment_reference = reference
+                        owner.last_payment_date = timezone.now()
+                        owner.subscription_status = 'active'
+
+                        # ✅ Handle renewal: extend subscription_end_date
+                        if owner.subscription_end_date and timezone.now() < owner.subscription_end_date:
+                            if owner.subscription_plan == "monthly":
+                                owner.subscription_end_date += timezone.timedelta(days=30)
+                            elif owner.subscription_plan == "yearly":
+                                owner.subscription_end_date += timezone.timedelta(days=365)
+                            # for testing we have hourly renewal
+                            else :
+                                owner.subscription_end_date += timezone.timedelta(hours=1)
+                        owner.save()
+
+            # --- Event: Subscription Created ---
             elif event == 'subscription.create':
                 customer_code = data.get('customer', {}).get('customer_code')
                 subscription_code = data.get('subscription_code')
                 email_token = data.get('email_token')
-
+                email = data.get("email")
+                
                 transaction = PaymentTransaction.objects.filter(
-                    paystack_customer_code=customer_code,
-                    status='success'
+                    email=email
                 ).order_by('-processed_at').first()
 
                 if transaction:
@@ -1083,54 +1109,62 @@ class PaystackWebhookAPIView(APIView):
                         "email_token": email_token,
                         "subscription_status": data.get('status'),
                         "next_payment_date": data.get('next_payment_date'),
-                        "plan_id": data.get('plan', {}).get('id'),
-                        "plan_code": data.get('plan', {}).get('plan_code'),
                     }
                     transaction.save()
 
-                    print(f"✅ Stored subscription {subscription_code} for customer {customer_code}")
-            
-            #  subsequent billing cycles
+                    # Attach to BusinessOwner
+                    if transaction.user:
+                        transaction.user.paystack_subscription_code = subscription_code
+                        transaction.user.save()
 
-            elif event == 'invoice.update':
+            # --- Event: Invoice Create (reminder) ---
+            elif event == 'invoice.create':
+                # Could trigger reminder email
                 pass
-                '''
-                This will contain the final status of the invoice for this subscription payment, as well as information on the charge if it was successful
-                '''
 
-            # --- Event: Subscription Failure/Cancellation ---
-            elif event == 'invoice.payment_failed' or event == 'subscription.disable':
+            # --- Event: Invoice Update (after charge attempt) ---
+            elif event == 'invoice.update':
+                status_val = data.get('status')
+                subscription_code = data.get('subscription', {}).get('subscription_code')
+
+                owner = BusinessOwner.objects.filter(paystack_subscription_code=subscription_code).first()
+                if owner:
+                    if status_val == "success":
+                        owner.subscription_status = "active"
+                        owner.save()
+                    elif status_val == "failed":
+                        owner.subscription_status = "expired"
+                        owner.save()
+
+            # --- Event: Payment Failed ---
+            elif event == 'invoice.payment_failed':
                 subscription_code = data.get('subscription_code')
                 owner = BusinessOwner.objects.filter(paystack_subscription_code=subscription_code).first()
                 if owner:
                     owner.subscription_status = 'expired'
                     owner.save()
-                    print(f"Subscription for {owner.email} has expired.")
 
-            # 4️⃣ Handle subscription disable / not renew
-            elif event ==   'subscription.not_renew' :
-                '''
-                    event sent to indicate that the subscription will not renew on the next payment date. also part of when a user cancel his or her subscription ..
-                '''
-                print("IS THIS A RENEWAL OR NOT ")
+            # --- Event: Subscription Cancelled (user turned off renew) ---
+            elif event == 'subscription.not_renew':
+                print("IS THIS A RENEWAL")
                 print(data)
-                paystack_reference : str = data.get('reference')
-                owner = BusinessOwner.objects.filter(reference=paystack_reference).first()
-
-                if owner and not owner.paystack_subscription_code : 
-                    pass 
-                '''
                 subscription_code = data.get('subscription_code')
                 owner = BusinessOwner.objects.filter(paystack_subscription_code=subscription_code).first()
+                if owner:
+                    # Mark as cancelled, but keep active until end_date
+                    owner.subscription_status = 'cancelled'
+                    owner.save()
 
+            # --- Event: Subscription Disabled (final disable) ---
+            elif event == 'subscription.disable':
+                subscription_code = data.get('subscription_code')
+                owner = BusinessOwner.objects.filter(paystack_subscription_code=subscription_code).first()
                 if owner:
                     owner.subscription_status = 'expired'
                     owner.save()
-                    print(f"⚠️ Subscription for {owner.email} has expired.")
-                '''
 
         except Exception as e:
-            print(f"❌ Error processing Paystack webhook {event}: {e}")
+            print(f"❌ Error processing webhook {event}: {e}")
             return Response({'status': 'error'}, status=status.HTTP_200_OK)
 
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
@@ -1180,77 +1214,25 @@ def check_payment_status(request):
         print(e)
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-# not using now
-class PaystackWebhook2(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = []
-    def post(self, request):
+# misc 
+# List unread notifications for logged-in user
+class UnreadNotificationsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        notifications = Notification.objects.filter(owner=request.user, is_read=False)
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# Delete (mark as read -> auto delete) a notification
+class DeleteNotificationAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
         try:
-            if not verify_paystack_webhook(request):
-                return Response({'error': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
-            webhook_data = json.loads(request.body)
-            event = webhook_data.get('event')
-            data = webhook_data.get('data', {})
-            if event == 'charge.success':
-                reference = data.get('reference')
-                metadata = data.get('metadata', {})
-                email = metadata.get('email')
-                plan_type = metadata.get('plan_type')
-                signup_token = metadata.get('signup_token')
-                business_owner_id = metadata.get('business_owner_id')
-                is_renewal = metadata.get('is_renewal', False)
-                amount = data.get('amount')
-                transaction_type = 'renewal' if is_renewal else 'signup'
-                user = None
-                signup_token_obj = None
-                # Idempotency check
-                if PaymentTransaction.objects.filter(reference=reference, status='success').exists():
-                    return Response({'status': 'already_processed', 'message': 'This payment reference has already been processed.'})
-                if is_renewal and business_owner_id:
-                    try:
-                        user = BusinessOwner.objects.get(id=business_owner_id)
-                        duration_days = 365 if plan_type == 'yearly' else 30
-                        user.activate_subscription(duration_days=duration_days, plan_type=plan_type)
-                        user.last_payment_reference = reference
-                        user.last_payment_date = timezone.now()
-                        user.save()
-                        send_payment_confirmation_email(user)
-                    except BusinessOwner.DoesNotExist:
-                        return Response({'error': 'Business owner not found'}, status=status.HTTP_400_BAD_REQUEST)
-                elif signup_token:
-                    try:
-                        signup_token_obj = SignupToken.objects.get(token=signup_token, email=email)
-                        if signup_token_obj.is_used:
-                            return Response({'error': 'Signup token already used'}, status=status.HTTP_400_BAD_REQUEST)
-                        signup_token_obj.is_used = True
-                        signup_token_obj.save()
-                        duration_days = metadata.get('duration_days', 30)
-                        send_signup_token_email(email, signup_token, duration_days)
-                    except SignupToken.DoesNotExist:
-                        return Response({'error': 'Signup token not found'}, status=status.HTTP_400_BAD_REQUEST)
-                PaymentTransaction.objects.create(
-                    reference=reference,
-                    email=email,
-                    user=user,
-                    amount=amount,
-                    status='success',
-                    transaction_type=transaction_type,
-                    metadata=metadata,
-                    signup_token=signup_token_obj
-                )
-                return Response({'status': 'success', 'message': 'Webhook payment processed.'})
-            else:
-                # Record non-successful or other event
-                PaymentTransaction.objects.create(
-                    reference=data.get('reference', ''),
-                    email=data.get('customer', {}).get('email', ''),
-                    user=None,
-                    amount=data.get('amount'),
-                    status=event,
-                    transaction_type='webhook',
-                    metadata=data,
-                    signup_token=None
-                )
-                return Response({'status': 'ignored', 'message': 'Event not charge.success'})
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            notification = Notification.objects.get(pk=pk, owner=request.user)
+            notification.mark_as_read()
+            return Response({"message": "Notification deleted"}, status=status.HTTP_204_NO_CONTENT)
+        except Notification.DoesNotExist:
+            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="page-content">
+  <h2 class="page-title">Notifications</h2>
+  <p class="page-subtitle">Stay up to date with your account activity.</p>
+
+  <div class="d-flex justify-content-between mb-3">
+    <a href="{% url 'mark_all_as_read' %}" class="btn btn-sm btn-primary">Mark all as read</a>
+  </div>
+
+  {% if notifications %}
+    <ul class="list-group">
+      {% for n in notifications %}
+        <li class="list-group-item d-flex justify-content-between align-items-center {% if not n.is_read %}list-group-item-warning{% endif %}">
+          <div>
+            <strong>{{ n.title }}</strong><br>
+            <small>{{ n.message }}</small><br>
+            <small class="text-muted">{{ n.created_at|date:"M d, Y H:i" }}</small>
+          </div>
+          <a href="{% url 'mark_as_read' n.id %}" class="btn btn-sm btn-outline-success">
+            Mark as Read
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-muted">No notifications.</p>
+  {% endif %}
+</div>
+{% endblock %}

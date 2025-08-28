@@ -105,7 +105,7 @@ class InventoryManager {
 
             const response = await fetch(`/api/v1/inventory/list/?${queryParams}`, {
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });
@@ -132,7 +132,7 @@ class InventoryManager {
 
             const response = await fetch(`/api/v1/inventory/list/?${queryParams}`, {
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });
@@ -263,7 +263,7 @@ class InventoryManager {
         try {
             const response = await fetch('/api/v1/category/list-count/', {
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });
@@ -335,7 +335,7 @@ class InventoryManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 },
                 body: JSON.stringify(data)
@@ -360,7 +360,7 @@ class InventoryManager {
         try {
             const response = await fetch(`/api/v1/inventory/${itemId}/update/`, {
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });
@@ -410,7 +410,7 @@ class InventoryManager {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 },
                 body: JSON.stringify(data)
@@ -445,7 +445,7 @@ class InventoryManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 },
                 body: JSON.stringify({ quantity_change: finalChange })
@@ -475,7 +475,7 @@ class InventoryManager {
             const response = await fetch(`/api/v1/inventory/${itemId}/delete/`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });
@@ -498,7 +498,7 @@ class InventoryManager {
         try {
             const response = await fetch(`/api/v1/inventory/${itemId}/update/`, {
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });
@@ -520,7 +520,7 @@ class InventoryManager {
         try {
             const response = await fetch('/api/v1/inventory/stats/', {
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });
@@ -537,7 +537,7 @@ class InventoryManager {
         try {
             const response = await fetch('/api/v1/inventory/stats/', {
                 headers: {
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                    'Authorization': `Token ${authTokenFromView}`,
                     'X-CSRFToken': this.getCsrfToken()
                 }
             });

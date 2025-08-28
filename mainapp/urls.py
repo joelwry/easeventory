@@ -22,4 +22,7 @@ urlpatterns = [
     path('subscription/renewal/success/', views.renewal_subscription_success_page, name='renewal_subscription_success'),
     path('payment/confirming/', views.payment_confirmation_wait, name='payment_confirmation_wait'),
     path('', views.landing, name='landing'),
+    path("notifications/", views.notifications_list, name="notifications_list"),
+    path("notifications/<int:pk>/read/", views.mark_as_read, name="mark_as_read"),
+    path("notifications/read-all/", views.mark_all_as_read, name="mark_all_as_read"),
 ]
