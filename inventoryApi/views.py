@@ -1014,11 +1014,15 @@ class PaystackWebhookAPIView(APIView):
         event = payload.get('event')
         data = payload.get('data', {})
 
+        print("\n=============================")
         print('WEBHOOK CALLED')
         print(event)
+        print(data)
+        print("=============================\n")
         try:
             # --- Event: Payment Success ---
             if event == 'charge.success':
+                print('CALLED ON EVENT CHARGE.SUCCESS')
                 reference = data.get('reference')
                 email = data.get('customer', {}).get('email')
                 customer_code = data.get('customer', {}).get('customer_code')
@@ -1067,7 +1071,7 @@ class PaystackWebhookAPIView(APIView):
                         **(transaction.metadata or {}),
                         "paystack_transaction_id": data.get('id'),
                         "plan_code": data.get('plan'),
-                        "amount": data.get('amount'),
+                        "amount": data.get('amount')/100,
                         "paid_at": data.get('paid_at'),
                     }
                     transaction.save()
@@ -1090,13 +1094,14 @@ class PaystackWebhookAPIView(APIView):
                             else :
                                 owner.subscription_end_date += timezone.timedelta(hours=1)
                         owner.save()
+                        print('RENEWAL SUCCESSFUL')
 
             # --- Event: Subscription Created ---
             elif event == 'subscription.create':
+                print('CALLED ON SUBSCRIPTION.CREATE EVENT')
                 customer_code = data.get('customer', {}).get('customer_code')
                 subscription_code = data.get('subscription_code')
-                email_token = data.get('email_token')
-                email = data.get("email")
+                email = data.get('customer', {}).get('email')
                 
                 transaction = PaymentTransaction.objects.filter(
                     email=email
@@ -1104,9 +1109,9 @@ class PaystackWebhookAPIView(APIView):
 
                 if transaction:
                     transaction.paystack_subscription_code = subscription_code
+                    transaction.paystack_customer_code = customer_code
                     transaction.metadata = {
                         **(transaction.metadata or {}),
-                        "email_token": email_token,
                         "subscription_status": data.get('status'),
                         "next_payment_date": data.get('next_payment_date'),
                     }
