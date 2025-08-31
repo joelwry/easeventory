@@ -1013,16 +1013,9 @@ class PaystackWebhookAPIView(APIView):
         payload = request.data
         event = payload.get('event')
         data = payload.get('data', {})
-
-        print("\n=============================")
-        print('WEBHOOK CALLED')
-        print(event)
-        print(data)
-        print("=============================\n")
         try:
             # --- Event: Payment Success ---
             if event == 'charge.success':
-                print('CALLED ON EVENT CHARGE.SUCCESS')
                 reference = data.get('reference')
                 email = data.get('customer', {}).get('email')
                 customer_code = data.get('customer', {}).get('customer_code')
@@ -1045,8 +1038,6 @@ class PaystackWebhookAPIView(APIView):
                         "paid_at": data.get('paid_at'),
                     }
                     transaction.save()
-
-                    print(f"✅ Updated transaction {transaction.reference} -> success.")
 
                     # Trigger email for signups... we doing this check since this event is called for both signup or renewal
                     if transaction.transaction_type == 'signup' and transaction.signup_token:
@@ -1098,7 +1089,6 @@ class PaystackWebhookAPIView(APIView):
 
             # --- Event: Subscription Created ---
             elif event == 'subscription.create':
-                print('CALLED ON SUBSCRIPTION.CREATE EVENT')
                 customer_code = data.get('customer', {}).get('customer_code')
                 subscription_code = data.get('subscription_code')
                 email = data.get('customer', {}).get('email')
@@ -1151,8 +1141,6 @@ class PaystackWebhookAPIView(APIView):
 
             # --- Event: Subscription Cancelled (user turned off renew) ---
             elif event == 'subscription.not_renew':
-                print("IS THIS A RENEWAL")
-                print(data)
                 subscription_code = data.get('subscription_code')
                 owner = BusinessOwner.objects.filter(paystack_subscription_code=subscription_code).first()
                 if owner:

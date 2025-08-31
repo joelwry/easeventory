@@ -42,8 +42,6 @@
     const maxAttempts = 10; // Poll for about 30 seconds (10 attempts * 3s interval)
     let pollingInterval;
 
-    alert(`PAYMENT REFERENCE: ${paymentReference}`)
-
     async function checkStatus() {
         attempts++;
         if (attempts > maxAttempts) {

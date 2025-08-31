@@ -3,9 +3,6 @@ from django.db import models
 from django.utils.crypto import get_random_string
 from django.core.validators import MinValueValidator
 from django.utils import timezone
-import uuid
-import hashlib
-import time
 
 class BusinessOwner(AbstractUser):
     """Model for business owners who subscribe to the SAAS platform"""
@@ -39,6 +36,8 @@ class BusinessOwner(AbstractUser):
         choices=[
             ('monthly', 'Monthly'),
             ('yearly', 'Yearly'),
+            ('hourly', 'Hourly'),
+            ('dayly', 'Dayly'),
         ],
         null=True, blank=True
     )
